@@ -2,15 +2,34 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { Helmet } from "react-helmet";
 import { useAuth, type User } from "../../stores/auth.store";
-import { api } from "../../lib/api";
-import { saveAuth } from "../../lib/auth";
 import AuthBg from "../../assets/auth-bg.png";
+
+const USERS_KEY = "click-eat-users";
+
+function getUsers(): User[] {
+  try {
+    const raw = localStorage.getItem(USERS_KEY);
+
+    if (!raw) return [];
+
+    const parsed = JSON.parse(raw);
+
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveUsers(users: User[]) {
+  localStorage.setItem(USERS_KEY, JSON.stringify(users));
+}
 
 export const RegisterPage = () => {
   const navigate = useNavigate();
   const handleLogin = useAuth((state) => state.handleLogin);
 
   const [countryCode, setCountryCode] = useState("UZ +998");
+
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -20,7 +39,6 @@ export const RegisterPage = () => {
   });
 
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
 
   const handleChange =
     (field: keyof typeof form) =>
@@ -31,8 +49,9 @@ export const RegisterPage = () => {
       }));
     };
 
-  const handleSubmit = async (event: React.FormEvent) => {
+  const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
+
     setError("");
 
     const name = form.name.trim();
@@ -56,45 +75,31 @@ export const RegisterPage = () => {
       return;
     }
 
-    try {
-      setLoading(true);
+    const users = getUsers();
 
-      const response = await api.post("/auth/register", {
-        name,
-        email,
-        phone,
-        password,
-      });
+    const alreadyExists = users.some(
+      (user) => user.email === email
+    );
 
-      const backendUser = response.data.user;
-      const token = response.data.token;
-
-      saveAuth(token, backendUser);
-
-      const appUser: User = {
-        name: backendUser.name,
-        email: backendUser.email,
-        phone: backendUser.phone || "",
-        password: "",
-        avatar: backendUser.avatar || "",
-        role: "client",
-      };
-
-      handleLogin(appUser);
-      navigate("/");
-    } catch (err: any) {
-      const message = err?.response?.data?.message;
-
-      if (message === "User already exists") {
-        setError("Пользователь с таким email уже существует");
-      } else if (message === "Password must be at least 6 characters") {
-        setError("Пароль слишком короткий");
-      } else {
-        setError("Ошибка регистрации. Проверь данные и попробуй снова");
-      }
-    } finally {
-      setLoading(false);
+    if (alreadyExists) {
+      setError("Пользователь с таким email уже существует");
+      return;
     }
+
+    const newUser: User = {
+      name,
+      email,
+      phone,
+      password,
+      avatar: "",
+      role: "client",
+    };
+
+    saveUsers([...users, newUser]);
+
+    handleLogin(newUser);
+
+    navigate("/");
   };
 
   return (
@@ -108,6 +113,7 @@ export const RegisterPage = () => {
         style={{ backgroundImage: `url(${AuthBg})` }}
       >
         <div className="absolute inset-0 bg-[rgba(30,20,10,0.28)] backdrop-blur-[4px]" />
+
         <div className="absolute inset-y-0 right-0 w-[55%] bg-[radial-gradient(circle_at_center,rgba(255,125,0,0.92)_0%,rgba(255,110,0,0.86)_35%,rgba(255,110,0,0.68)_58%,rgba(255,110,0,0.20)_85%,transparent_100%)]" />
 
         <div className="relative z-10 mx-auto flex min-h-screen max-w-[1400px] items-center justify-between gap-8 px-8 py-10">
@@ -187,10 +193,9 @@ export const RegisterPage = () => {
 
               <button
                 type="submit"
-                disabled={loading}
-                className="w-full rounded-[20px] bg-[#ff8b39] px-5 py-4 text-[18px] font-bold text-white shadow-[0_16px_30px_rgba(255,107,0,0.18)] transition hover:translate-y-[-1px] hover:bg-[#ff7a1f] disabled:cursor-not-allowed disabled:opacity-60"
+                className="w-full rounded-[20px] bg-[#ff8b39] px-5 py-4 text-[18px] font-bold text-white shadow-[0_16px_30px_rgba(255,107,0,0.18)] transition hover:translate-y-[-1px] hover:bg-[#ff7a1f]"
               >
-                {loading ? "Создаём аккаунт..." : "Создать аккаунт"}
+                Создать аккаунт
               </button>
             </form>
 
@@ -213,8 +218,7 @@ export const RegisterPage = () => {
               </h2>
 
               <p className="mt-8 text-[24px] leading-10 text-white/92">
-                Быстрый заказ еды, удобный сервис и современный стиль в одном
-                месте
+                Быстрый заказ еды, удобный сервис и современный стиль в одном месте
               </p>
             </div>
           </div>
