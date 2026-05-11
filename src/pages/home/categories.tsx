@@ -1,10 +1,7 @@
 import { Link } from "react-router";
 import { Container } from "../../widgets/container";
-import { FiCoffee, FiHome, FiGrid, FiPackage } from "react-icons/fi";
 
-import {
-  HiOutlineHome,
-} from "react-icons/hi";
+import { HiOutlineHome } from "react-icons/hi";
 
 import {
   GiFullPizza,
