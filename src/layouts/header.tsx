@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { RiSearchLine, RiShoppingCart2Line } from "react-icons/ri";
 import { GoPerson } from "react-icons/go";
@@ -50,7 +50,23 @@ export const Header = () => {
   const theme = useThemeStore((state) => state.theme);
   const toggleTheme = useThemeStore((state) => state.toggleTheme);
 
-  const cartCount = getCartCount();
+  const [cartCount, setCartCount] = useState(getCartCount());
+
+  useEffect(() => {
+    const updateCartCount = () => {
+      setCartCount(getCartCount());
+    };
+
+    updateCartCount();
+
+    window.addEventListener("cart-updated", updateCartCount);
+    window.addEventListener("storage", updateCartCount);
+
+    return () => {
+      window.removeEventListener("cart-updated", updateCartCount);
+      window.removeEventListener("storage", updateCartCount);
+    };
+  }, []);
 
   const results = useMemo(() => searchAll(search), [search]);
   const quickSuggestions = useMemo(() => getRandomSuggestions(), []);
@@ -76,25 +92,29 @@ export const Header = () => {
 
   return (
     <>
-      <header className="fixed left-0 top-0 z-[70] w-full px-4 pt-5 pb-4">
+      <header className="fixed left-0 top-0 z-[70] w-full px-2 pt-3 pb-3 sm:px-4 sm:pt-5 sm:pb-4">
         <Container>
           <div
-            className={`rounded-[30px] px-6 py-4 backdrop-blur-xl transition-all ${
+            className={`rounded-[24px] px-4 py-4 backdrop-blur-xl transition-all sm:rounded-[30px] sm:px-6 ${
               isDark
                 ? "border border-[#2a1608] bg-black/95 shadow-[0_18px_45px_rgba(0,0,0,0.45)]"
                 : "border border-black/10 bg-white/95 shadow-[0_18px_45px_rgba(0,0,0,0.14)]"
             }`}
           >
-            <div className="grid grid-cols-[auto_1fr_auto] items-center gap-6">
-              <div className="flex items-center gap-8">
+            <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[auto_1fr_auto] lg:items-center lg:gap-6">
+              <div className="flex items-center justify-between gap-4 lg:justify-start lg:gap-8">
                 <Link
                   to="/"
-                  className="inline-flex items-center rounded-[22px] bg-white px-4 py-3 shadow-sm transition hover:scale-[1.02]"
+                  className="inline-flex items-center rounded-[18px] bg-white px-3 py-2 shadow-sm transition hover:scale-[1.02] sm:rounded-[22px] sm:px-4 sm:py-3"
                 >
-                  <img src={Logo} alt="ClickEat" className="w-[72px]" />
+                  <img
+                    src={Logo}
+                    alt="ClickEat"
+                    className="w-[56px] sm:w-[72px]"
+                  />
                 </Link>
 
-                <nav className="hidden items-center gap-9 lg:flex">
+                <nav className="hidden items-center gap-5 lg:flex">
                   {[
                     { label: "Menu", href: "/menu" },
                     { label: "Restaurants", href: "/restaurants" },
@@ -103,7 +123,7 @@ export const Header = () => {
                     <Link
                       key={link.href}
                       to={link.href}
-                      className={`text-[18px] font-bold transition hover:text-[#ff6b00] ${
+                      className={`text-[17px] font-bold transition hover:text-[#ff6b00] ${
                         isDark ? "text-white" : "text-[#171717]"
                       }`}
                     >
@@ -111,11 +131,51 @@ export const Header = () => {
                     </Link>
                   ))}
                 </nav>
+
+                <div className="flex items-center gap-2 lg:hidden">
+                  <Link
+                    to="/orders"
+                    className="relative inline-flex h-[48px] w-[48px] items-center justify-center rounded-full bg-[#ff6b00] text-white shadow-[0_10px_30px_rgba(255,107,0,0.35)] transition hover:scale-105"
+                  >
+                    <RiShoppingCart2Line className="text-[23px]" />
+
+                    {cartCount > 0 && (
+                      <span className="absolute -top-2 -right-1 rounded-full bg-white px-2 py-[2px] text-[10px] font-bold text-[#ff6b00]">
+                        {cartCount}
+                      </span>
+                    )}
+                  </Link>
+
+                  {user.email ? (
+                    <button
+                      type="button"
+                      onClick={() => setIsOpen(true)}
+                      className="flex h-[48px] w-[48px] items-center justify-center rounded-full border-[3px] border-[#ff6b00] bg-white shadow-sm transition hover:scale-105"
+                    >
+                      {user.avatar ? (
+                        <img
+                          src={user.avatar}
+                          alt="avatar"
+                          className="h-full w-full rounded-full object-cover"
+                        />
+                      ) : (
+                        <GoPerson className="text-[20px]" />
+                      )}
+                    </button>
+                  ) : (
+                    <Link
+                      to="/login"
+                      className="inline-flex h-[48px] w-[48px] items-center justify-center rounded-full bg-[#ff6b00] text-white"
+                    >
+                      <GoPerson />
+                    </Link>
+                  )}
+                </div>
               </div>
 
               <div className="relative flex justify-center">
                 <form onSubmit={handleSubmitSearch} className="w-full max-w-[620px]">
-                  <div className="flex items-center gap-3 rounded-full bg-white px-5 py-3 shadow-sm ring-1 ring-black/10">
+                  <div className="flex items-center gap-3 rounded-full bg-white px-4 py-3 shadow-sm ring-1 ring-black/10 sm:px-5">
                     <RiSearchLine className="text-[22px] text-[#8b95a7]" />
 
                     <input
@@ -124,14 +184,14 @@ export const Header = () => {
                       onFocus={() => setFocused(true)}
                       type="text"
                       placeholder="Поиск"
-                      className="w-full bg-transparent text-[16px] text-[#2f3542] outline-none placeholder:text-[#9aa3b2]"
+                      className="w-full bg-transparent text-[15px] text-[#2f3542] outline-none placeholder:text-[#9aa3b2] sm:text-[16px]"
                     />
                   </div>
                 </form>
 
                 {focused && (
                   <div
-                    className={`absolute top-[62px] z-[90] w-full max-w-[620px] rounded-[28px] p-4 backdrop-blur-xl ${
+                    className={`absolute top-[58px] z-[90] max-h-[70vh] w-full max-w-[620px] overflow-y-auto rounded-[24px] p-3 backdrop-blur-xl sm:top-[62px] sm:rounded-[28px] sm:p-4 ${
                       isDark
                         ? "border border-[#2a1608] bg-[#111]/98 shadow-[0_24px_70px_rgba(0,0,0,0.55)]"
                         : "border border-black/10 bg-white/98 shadow-[0_24px_70px_rgba(0,0,0,0.22)]"
@@ -145,33 +205,33 @@ export const Header = () => {
                               key={item.id}
                               to={item.href}
                               onClick={() => setFocused(false)}
-                              className={`flex items-center gap-4 rounded-[20px] p-3 transition ${
+                              className={`flex items-center gap-3 rounded-[18px] p-2 transition sm:gap-4 sm:rounded-[20px] sm:p-3 ${
                                 isDark ? "hover:bg-white/10" : "hover:bg-black/5"
                               }`}
                             >
                               <img
                                 src={item.image}
                                 alt={item.title}
-                                className="h-[64px] w-[84px] rounded-[16px] object-cover"
+                                className="h-[56px] w-[72px] rounded-[14px] object-cover sm:h-[64px] sm:w-[84px] sm:rounded-[16px]"
                               />
 
                               <div className="min-w-0 flex-1">
                                 <div className="flex items-center gap-2">
                                   <h4
-                                    className={`truncate text-[16px] font-black ${
+                                    className={`truncate text-[15px] font-black sm:text-[16px] ${
                                       isDark ? "text-white" : "text-[#171717]"
                                     }`}
                                   >
                                     {item.title}
                                   </h4>
 
-                                  <span className="rounded-full bg-[#ff6b00] px-3 py-1 text-[11px] font-black text-white">
+                                  <span className="rounded-full bg-[#ff6b00] px-2 py-1 text-[10px] font-black text-white sm:px-3 sm:text-[11px]">
                                     {item.badge}
                                   </span>
                                 </div>
 
                                 <p
-                                  className={`mt-1 line-clamp-1 text-[13px] ${
+                                  className={`mt-1 line-clamp-1 text-[12px] sm:text-[13px] ${
                                     isDark ? "text-white/60" : "text-black/55"
                                   }`}
                                 >
@@ -207,8 +267,11 @@ export const Header = () => {
                             <button
                               key={item.title}
                               type="button"
-                              onMouseDown={() => navigate(`/restaurant/${item.restaurantId}`)}
-                              className={`rounded-full px-4 py-2 text-[14px] font-bold transition hover:bg-[#ff6b00] hover:text-white ${
+                              onMouseDown={() => {
+                                navigate(`/restaurant/${item.restaurantId}`);
+                                setFocused(false);
+                              }}
+                              className={`rounded-full px-4 py-2 text-[13px] font-bold transition hover:bg-[#ff6b00] hover:text-white sm:text-[14px] ${
                                 isDark
                                   ? "bg-white/10 text-white"
                                   : "bg-black/10 text-[#171717]"
@@ -224,7 +287,7 @@ export const Header = () => {
                 )}
               </div>
 
-              <div className="flex items-center justify-end gap-3">
+              <div className="hidden items-center justify-end gap-3 lg:flex">
                 <Link
                   to="/orders"
                   className="relative inline-flex h-[58px] w-[58px] items-center justify-center rounded-full bg-[#ff6b00] text-white shadow-[0_10px_30px_rgba(255,107,0,0.35)] transition hover:scale-105"

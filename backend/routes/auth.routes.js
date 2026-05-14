@@ -2,70 +2,87 @@ import express from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { User } from "../models/User.js";
+import { protect } from "../middleware/auth.middleware.js";
 
 const router = express.Router();
 
-function createToken(userId) {
-  return jwt.sign({ userId }, process.env.JWT_SECRET, {
-    expiresIn: "7d",
-  });
+function createToken(user) {
+  return jwt.sign(
+    {
+      userId: user._id,
+      role: user.role,
+    },
+    process.env.JWT_SECRET,
+    {
+      expiresIn: "7d",
+    }
+  );
+}
+
+function publicUser(user) {
+  return {
+    id: user._id,
+    name: user.name,
+    email: user.email,
+    phone: user.phone,
+    avatar: user.avatar,
+    role: user.role,
+    isBlocked: user.isBlocked,
+    createdAt: user.createdAt,
+  };
 }
 
 router.post("/register", async (req, res) => {
   try {
-    const { name, email, password, phone } = req.body;
+    const { name, email, phone, password } = req.body;
 
     if (!name || !email || !password) {
       return res.status(400).json({
         success: false,
-        message: "Name, email and password are required",
+        message: "Имя, email и пароль обязательны",
       });
     }
 
     if (password.length < 6) {
       return res.status(400).json({
         success: false,
-        message: "Password must be at least 6 characters",
+        message: "Пароль должен быть минимум 6 символов",
       });
     }
 
-    const existingUser = await User.findOne({ email });
+    const existingUser = await User.findOne({
+      email: email.toLowerCase().trim(),
+    });
 
     if (existingUser) {
       return res.status(409).json({
         success: false,
-        message: "User already exists",
+        message: "Пользователь с таким email уже существует",
       });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const user = await User.create({
-      name,
-      email,
+      name: name.trim(),
+      email: email.toLowerCase().trim(),
       phone: phone || "",
       password: hashedPassword,
+      role: "client",
     });
 
-    const token = createToken(user._id);
+    const token = createToken(user);
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
-      message: "User registered successfully",
+      message: "Регистрация успешна",
       token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        avatar: user.avatar,
-        role: user.role,
-      },
+      user: publicUser(user),
     });
   } catch (error) {
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
-      message: "Register server error",
+      message: "Ошибка регистрации",
       error: error.message,
     });
   }
@@ -78,16 +95,25 @@ router.post("/login", async (req, res) => {
     if (!email || !password) {
       return res.status(400).json({
         success: false,
-        message: "Email and password are required",
+        message: "Email и пароль обязательны",
       });
     }
 
-    const user = await User.findOne({ email });
+    const user = await User.findOne({
+      email: email.toLowerCase().trim(),
+    }).select("+password");
 
     if (!user) {
       return res.status(401).json({
         success: false,
-        message: "Invalid email or password",
+        message: "Неверный email или пароль",
+      });
+    }
+
+    if (user.isBlocked) {
+      return res.status(403).json({
+        success: false,
+        message: "Аккаунт заблокирован",
       });
     }
 
@@ -96,32 +122,78 @@ router.post("/login", async (req, res) => {
     if (!isPasswordCorrect) {
       return res.status(401).json({
         success: false,
-        message: "Invalid email or password",
+        message: "Неверный email или пароль",
       });
     }
 
-    const token = createToken(user._id);
+    const token = createToken(user);
 
-    res.json({
+    return res.json({
       success: true,
-      message: "User logged in successfully",
+      message: "Вход выполнен успешно",
       token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        avatar: user.avatar,
-        role: user.role,
-      },
+      user: publicUser(user),
     });
   } catch (error) {
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
-      message: "Login server error",
+      message: "Ошибка входа",
       error: error.message,
     });
   }
 });
 
+router.get("/me", protect, async (req, res) => {
+  return res.json({
+    success: true,
+    user: publicUser(req.user),
+  });
+});
+
+router.patch("/me", protect, async (req, res) => {
+  try {
+    const { name, phone, avatar } = req.body;
+
+    if (name !== undefined) req.user.name = name.trim();
+    if (phone !== undefined) req.user.phone = phone.trim();
+    if (avatar !== undefined) req.user.avatar = avatar;
+
+    await req.user.save();
+
+    res.json({
+      success: true,
+      message: "Профиль обновлён",
+      user: publicUser(req.user),
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Ошибка обновления профиля",
+    });
+  }
+});
+
+router.patch("/me", protect, async (req, res) => {
+  try {
+    const { name, phone, avatar } = req.body;
+
+    if (name !== undefined) req.user.name = name.trim();
+    if (phone !== undefined) req.user.phone = phone.trim();
+    if (avatar !== undefined) req.user.avatar = avatar;
+
+    await req.user.save();
+
+    return res.json({
+      success: true,
+      message: "Профиль обновлён",
+      user: publicUser(req.user),
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Ошибка обновления профиля",
+    });
+  }
+});
 export default router;
+

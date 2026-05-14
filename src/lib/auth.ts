@@ -1,10 +1,11 @@
 export type AuthUser = {
-  id: string;
+  id?: string;
+  _id?: string;
   name: string;
   email: string;
   phone: string;
   avatar: string;
-  role: "user" | "admin";
+  role: "client" | "employee" | "admin" | "user";
 };
 
 export function saveAuth(token: string, user: AuthUser) {
@@ -12,9 +13,20 @@ export function saveAuth(token: string, user: AuthUser) {
   localStorage.setItem("clickeat-user", JSON.stringify(user));
 }
 
+export function getToken() {
+  return localStorage.getItem("clickeat-token");
+}
+
 export function getAuthUser(): AuthUser | null {
   const user = localStorage.getItem("clickeat-user");
-  return user ? JSON.parse(user) : null;
+
+  if (!user) return null;
+
+  try {
+    return JSON.parse(user);
+  } catch {
+    return null;
+  }
 }
 
 export function logout() {

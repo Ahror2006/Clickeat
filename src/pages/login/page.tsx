@@ -2,20 +2,9 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { Helmet } from "react-helmet";
 import { useAuth, type User } from "../../stores/auth.store";
+import { api } from "../../lib/api";
+import { saveAuth } from "../../lib/auth";
 import AuthBg from "../../assets/auth-bg.png";
-
-const USERS_KEY = "click-eat-users";
-
-function getUsers(): User[] {
-  try {
-    const raw = localStorage.getItem(USERS_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
 
 export const LoginPage = () => {
   const navigate = useNavigate();
@@ -27,6 +16,7 @@ export const LoginPage = () => {
   });
 
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleChange =
     (field: keyof typeof form) =>
@@ -37,7 +27,7 @@ export const LoginPage = () => {
       }));
     };
 
-  const handleSubmit = (event: React.FormEvent) => {
+  const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setError("");
 
@@ -49,19 +39,48 @@ export const LoginPage = () => {
       return;
     }
 
-    const users = getUsers();
+    try {
+      setLoading(true);
 
-    const foundUser = users.find(
-      (user) => user.email === email && user.password === password
-    );
+      const response = await api.post("/auth/login", {
+        email,
+        password,
+      });
 
-    if (!foundUser) {
-      setError("Неверный email или пароль");
-      return;
+      const backendUser = response.data.user;
+      const token = response.data.token;
+
+      saveAuth(token, backendUser);
+
+      const appUser: User = {
+        name: backendUser.name,
+        email: backendUser.email,
+        phone: backendUser.phone || "",
+        password: "",
+        avatar: backendUser.avatar || "",
+        role: backendUser.role || "client",
+      };
+
+      handleLogin(appUser);
+
+      if (backendUser.role === "admin") {
+        navigate("/admin");
+      } else if (backendUser.role === "employee") {
+        navigate("/employee");
+      } else {
+        navigate("/");
+      }
+    } catch (err: any) {
+      const message = err?.response?.data?.message;
+
+      if (message) {
+        setError(message);
+      } else {
+        setError("Ошибка входа. Проверь backend и попробуй снова");
+      }
+    } finally {
+      setLoading(false);
     }
-
-    handleLogin(foundUser);
-    navigate("/");
   };
 
   return (
@@ -116,9 +135,10 @@ export const LoginPage = () => {
 
               <button
                 type="submit"
-                className="w-full rounded-[20px] bg-[#ff6b00] px-5 py-4 text-[18px] font-bold text-white shadow-[0_16px_30px_rgba(255,107,0,0.24)] transition hover:translate-y-[-1px] hover:bg-[#ff5b00]"
+                disabled={loading}
+                className="w-full rounded-[20px] bg-[#ff6b00] px-5 py-4 text-[18px] font-bold text-white shadow-[0_16px_30px_rgba(255,107,0,0.24)] transition hover:translate-y-[-1px] hover:bg-[#ff5b00] disabled:cursor-not-allowed disabled:opacity-60"
               >
-                Войти
+                {loading ? "Входим..." : "Войти"}
               </button>
             </form>
 

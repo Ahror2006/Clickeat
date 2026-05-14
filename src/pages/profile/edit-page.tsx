@@ -3,7 +3,6 @@ import { GoPerson } from "react-icons/go";
 import {
   FiSave,
   FiTrash2,
-  FiLock,
   FiMail,
   FiPhone,
   FiUser,
@@ -13,21 +12,22 @@ import {
 import { Link, useNavigate } from "react-router";
 import { useAuth } from "../../stores/auth.store";
 import { useToastStore } from "../../stores/toast.store";
+import { getToken, saveAuth } from "../../lib/auth";
 
 export function EditProfilePage() {
   const navigate = useNavigate();
 
   const user = useAuth((state) => state.user);
   const updateProfile = useAuth((state) => state.updateProfile);
-  const setAvatar = useAuth((state) => state.setAvatar);
   const logout = useAuth((state) => state.handleLogout);
-
   const showToast = useToastStore((state) => state.showToast);
 
+  const token = getToken();
+
   const [name, setName] = useState(user.name || "");
-  const [email, setEmail] = useState(user.email || "");
   const [phone, setPhone] = useState(user.phone || "");
-  const [password, setPassword] = useState(user.password || "");
+  const [avatar, setAvatar] = useState(user.avatar || "");
+  const [loading, setLoading] = useState(false);
 
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -35,71 +35,116 @@ export function EditProfilePage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      setAvatar(reader.result as string);
-      showToast("Аватар обновлён", "success");
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!name.trim()) return showToast("Введите имя", "error");
-    if (!email.trim()) return showToast("Введите email", "error");
-    if (!password.trim()) return showToast("Введите пароль", "error");
-
-    if (password.trim().length < 8) {
-      showToast("Пароль должен содержать минимум 8 символов", "error");
+    if (file.size > 2 * 1024 * 1024) {
+      showToast("Фото слишком большое. Лучше выбрать до 2MB.", "error");
       return;
     }
 
-    updateProfile({
-      name: name.trim(),
-      email: email.trim(),
-      phone: phone.trim(),
-      password: password.trim(),
-    });
+    const reader = new FileReader();
 
-    showToast("Данные профиля сохранены", "success");
-    setTimeout(() => navigate("/profile"), 600);
+    reader.onload = () => {
+      setAvatar(reader.result as string);
+      showToast("Аватар выбран", "success");
+    };
+
+    reader.readAsDataURL(file);
   };
 
-  const handleDeleteAccount = () => {
-    const confirmed = window.confirm(
-      "Ты точно хочешь удалить аккаунт? Это действие нельзя отменить."
-    );
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!name.trim()) {
+      showToast("Введите имя", "error");
+      return;
+    }
+
+    if (!token) {
+      showToast("Сначала войдите в аккаунт", "error");
+      navigate("/login");
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      const response = await fetch("http://localhost:5000/api/auth/me", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          name: name.trim(),
+          phone: phone.trim(),
+          avatar,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        showToast(data.message || "Ошибка сохранения профиля", "error");
+        return;
+      }
+
+      updateProfile({
+        name: data.user.name,
+        email: data.user.email,
+        phone: data.user.phone || "",
+        avatar: data.user.avatar || "",
+        role: data.user.role,
+      });
+
+      saveAuth(token, data.user);
+
+      showToast("Профиль сохранён", "success");
+      setTimeout(() => navigate("/profile"), 500);
+    } catch {
+      showToast("Backend не отвечает", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLogout = () => {
+    const confirmed = window.confirm("Выйти из аккаунта?");
 
     if (!confirmed) return;
 
     logout();
+    localStorage.removeItem("clickeat-token");
+    localStorage.removeItem("clickeat-user");
     localStorage.removeItem("click-eat-current-user");
-    showToast("Аккаунт удалён", "success");
-    setTimeout(() => navigate("/"), 600);
+
+    showToast("Вы вышли из аккаунта", "success");
+    setTimeout(() => navigate("/"), 500);
   };
 
   return (
-    <section className="edit-profile-page pb-12">
-      <div className="mx-auto max-w-[1120px] px-4">
+    <section className="edit-profile-page pb-10 sm:pb-12">
+      <div className="mx-auto max-w-[1120px] px-3 sm:px-4">
         <div className="edit-profile-shell">
-          <div className="edit-profile-hero">
+          <div className="edit-profile-hero !px-5 !py-7 sm:!px-8 sm:!py-10">
             <div>
               <Link to="/profile" className="edit-profile-back">
                 <FiArrowLeft />
                 <span>Назад в профиль</span>
               </Link>
 
-              <h1>Редактирование профиля</h1>
-              <p>Обнови личные данные, пароль и аватар аккаунта.</p>
+              <h1 className="!text-[34px] sm:!text-[48px] lg:!text-[58px]">
+                Редактирование профиля
+              </h1>
+              <p className="!text-[15px] sm:!text-[17px]">
+                Обнови личные данные и аватар аккаунта.
+              </p>
             </div>
           </div>
 
-          <div className="edit-profile-content">
+          <div className="edit-profile-content !grid-cols-1 lg:!grid-cols-[360px_1fr]">
             <div className="edit-profile-avatar-card">
               <p className="edit-profile-card-title">Фото профиля</p>
               <span className="edit-profile-card-subtitle">
-                Нажми на аватар, чтобы заменить изображение.
+                Аватар сохранится в MongoDB и будет доступен после входа с другого устройства.
               </span>
 
               <div className="mt-8 flex flex-col items-center">
@@ -108,11 +153,7 @@ export function EditProfilePage() {
                   onClick={() => fileRef.current?.click()}
                   className="edit-profile-avatar-button"
                 >
-                  {user.avatar ? (
-                    <img src={user.avatar} alt="avatar" />
-                  ) : (
-                    <GoPerson />
-                  )}
+                  {avatar ? <img src={avatar} alt="avatar" /> : <GoPerson />}
 
                   <span>
                     <FiCamera />
@@ -143,7 +184,7 @@ export function EditProfilePage() {
                 <div>
                   <p className="edit-profile-card-title">Личные данные</p>
                   <span className="edit-profile-card-subtitle">
-                    Эти данные будут использоваться в профиле и заказах.
+                    Email меняется только через backend-логику безопасности.
                   </span>
                 </div>
               </div>
@@ -161,10 +202,11 @@ export function EditProfilePage() {
                 <Field
                   label="Email"
                   icon={<FiMail />}
-                  value={email}
-                  onChange={setEmail}
-                  placeholder="Введите email"
+                  value={user.email}
+                  onChange={() => {}}
+                  placeholder="Email"
                   type="email"
+                  disabled
                 />
 
                 <Field
@@ -176,28 +218,23 @@ export function EditProfilePage() {
                   type="text"
                 />
 
-                <Field
-                  label="Пароль"
-                  icon={<FiLock />}
-                  value={password}
-                  onChange={setPassword}
-                  placeholder="Введите пароль"
-                  type="password"
-                />
-
                 <div className="mt-4 flex flex-col gap-3 sm:flex-row">
-                  <button type="submit" className="edit-profile-save-btn">
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="edit-profile-save-btn disabled:opacity-60"
+                  >
                     <FiSave />
-                    <span>Сохранить данные</span>
+                    <span>{loading ? "Сохраняем..." : "Сохранить данные"}</span>
                   </button>
 
                   <button
                     type="button"
-                    onClick={handleDeleteAccount}
+                    onClick={handleLogout}
                     className="edit-profile-delete-btn"
                   >
                     <FiTrash2 />
-                    <span>Удалить аккаунт</span>
+                    <span>Выйти из аккаунта</span>
                   </button>
                 </div>
               </form>
@@ -216,6 +253,7 @@ function Field({
   onChange,
   placeholder,
   type,
+  disabled = false,
 }: {
   label: string;
   icon: React.ReactNode;
@@ -223,6 +261,7 @@ function Field({
   onChange: (value: string) => void;
   placeholder: string;
   type: string;
+  disabled?: boolean;
 }) {
   return (
     <div>
@@ -233,6 +272,7 @@ function Field({
         <input
           type={type}
           value={value}
+          disabled={disabled}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
         />

@@ -16,6 +16,10 @@ import { ContactPage } from "./pages/contact/page";
 import { SupportPage } from "./pages/support/page";
 import { ReviewsPage } from "./pages/reviews/page";
 import { ComplaintsPage } from "./pages/complaints/page";
+import { EmployeeRoute } from "./components/EmployeeRoute";
+import AdminRoute from "./components/AdminRoute";
+import { CheckoutPage } from "./pages/checkout/page";
+import { OrderTrackingPage } from "./pages/order-tracking/page";
 
 export const router = createBrowserRouter([
   {
@@ -50,6 +54,16 @@ export const router = createBrowserRouter([
         path: "complaints",
         Component: ComplaintsPage,
       },
+      {
+        path: "admin",
+        Component: AdminRoute,
+      },
+      {
+        path: "employee",
+        Component: EmployeeRoute,
+      },
+      { path: "checkout", Component: CheckoutPage },
+      { path: "order-tracking/:id", Component: OrderTrackingPage },
     ],
   },
 ]);

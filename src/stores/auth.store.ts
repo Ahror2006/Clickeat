@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-export type UserRole = "client" | "staff" | "admin";
+export type UserRole = "client" | "employee" | "admin";
 
 export interface User {
   name: string;

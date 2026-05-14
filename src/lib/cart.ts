@@ -25,16 +25,17 @@ export function saveCart(cart: CartItem[]) {
   window.dispatchEvent(new Event("cart-updated"));
 }
 
+
 export function addToCart(item: Omit<CartItem, "quantity">) {
   const cart = getCart();
   const id = String(item.id);
 
   const updated = cart.some((cartItem) => String(cartItem.id) === id)
     ? cart.map((cartItem) =>
-        String(cartItem.id) === id
-          ? { ...cartItem, quantity: (cartItem.quantity || 1) + 1 }
-          : cartItem
-      )
+      String(cartItem.id) === id
+        ? { ...cartItem, quantity: (cartItem.quantity || 1) + 1 }
+        : cartItem
+    )
     : [...cart, { ...item, id, quantity: 1 }];
 
   saveCart(updated);

@@ -2,6 +2,7 @@ import { Outlet, useLocation } from "react-router";
 import { Header } from "./layouts/header";
 import { Footer } from "./layouts/footer";
 
+
 export const App = () => {
   const location = useLocation();
 

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 import {
   FiMinus,
   FiPlus,
@@ -19,6 +19,7 @@ import {
 import { useAuth } from "../../stores/auth.store";
 import { clearCart } from "../../lib/cart";
 
+
 type CartItem = {
   id: number | string;
   title: string;
@@ -32,6 +33,7 @@ type PaymentMethod = "cash" | "card" | "online";
 
 const CART_KEY = "cart";
 const ORDERS_KEY = "orders";
+
 
 const RESTAURANT_ADDRESS =
   "Фарғона Йўли 15, Toshkent, Toshkent, Узбекистан";
@@ -84,6 +86,7 @@ async function getAddressFromCoords(lat: number, lng: number) {
 }
 
 export function OrdersPage() {
+  const navigate = useNavigate();
   const user = useAuth((state) => state.user);
   const [successOrder, setSuccessOrder] = useState<{
     id: string;
@@ -166,12 +169,14 @@ export function OrdersPage() {
 
     setCart(updated);
     saveCart(updated);
+    window.dispatchEvent(new Event("cart-updated"));
   };
 
   const removeItem = (id: CartItem["id"]) => {
     const updated = cart.filter((item) => item.id !== id);
     setCart(updated);
     saveCart(updated);
+    window.dispatchEvent(new Event("cart-updated"));
   };
 
   const handleApplyPromo = () => {
@@ -521,7 +526,7 @@ export function OrdersPage() {
               <button
                 type="button"
                 className="orders-confirm-btn"
-                onClick={handleConfirmOrder}
+                onClick={() => navigate("/checkout")}
               >
                 Оформить заказ
               </button>

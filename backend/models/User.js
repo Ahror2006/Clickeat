@@ -4,27 +4,30 @@ const userSchema = new mongoose.Schema(
   {
     name: {
       type: String,
-      required: [true, "Name is required"],
+      required: [true, "Имя обязательно"],
       trim: true,
+      minlength: [2, "Имя слишком короткое"],
     },
 
     email: {
       type: String,
-      required: [true, "Email is required"],
+      required: [true, "Email обязателен"],
       unique: true,
       lowercase: true,
       trim: true,
     },
 
-    password: {
-      type: String,
-      required: [true, "Password is required"],
-      minlength: 6,
-    },
-
     phone: {
       type: String,
       default: "",
+      trim: true,
+    },
+
+    password: {
+      type: String,
+      required: [true, "Пароль обязателен"],
+      minlength: [6, "Пароль должен быть минимум 6 символов"],
+      select: false,
     },
 
     avatar: {
@@ -34,8 +37,13 @@ const userSchema = new mongoose.Schema(
 
     role: {
       type: String,
-      enum: ["user", "admin"],
-      default: "user",
+      enum: ["client", "employee", "admin"],
+      default: "client",
+    },
+
+    isBlocked: {
+      type: Boolean,
+      default: false,
     },
   },
   {
