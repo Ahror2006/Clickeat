@@ -9,7 +9,7 @@ const router = express.Router();
 function createToken(user) {
   return jwt.sign(
     {
-      userId: user._id,
+      userId: user._id.toString(),
       role: user.role,
     },
     process.env.JWT_SECRET,
@@ -21,13 +21,13 @@ function createToken(user) {
 
 function publicUser(user) {
   return {
-    id: user._id,
-    name: user.name,
-    email: user.email,
-    phone: user.phone,
-    avatar: user.avatar,
-    role: user.role,
-    isBlocked: user.isBlocked,
+    id: user._id.toString(),
+    name: user.name || "",
+    email: user.email || "",
+    phone: user.phone || "",
+    avatar: user.avatar || "",
+    role: user.role || "client",
+    isBlocked: Boolean(user.isBlocked),
     createdAt: user.createdAt,
   };
 }
@@ -43,14 +43,23 @@ router.post("/register", async (req, res) => {
       });
     }
 
-    if (password.length < 6) {
+    const normalizedEmail = email.toLowerCase().trim();
+    const normalizedName = name.trim();
+    const normalizedPhone = phone ? phone.trim() : "";
+
+    if (normalizedName.length < 2) {
       return res.status(400).json({
         success: false,
-        message: "Пароль должен быть минимум 6 символов",
+        message: "Имя слишком короткое",
       });
     }
 
-    const normalizedEmail = email.toLowerCase().trim();
+    if (password.length < 8) {
+      return res.status(400).json({
+        success: false,
+        message: "Пароль должен быть минимум 8 символов",
+      });
+    }
 
     const existingUser = await User.findOne({ email: normalizedEmail });
 
@@ -64,9 +73,9 @@ router.post("/register", async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const user = await User.create({
-      name: name.trim(),
+      name: normalizedName,
       email: normalizedEmail,
-      phone: phone || "",
+      phone: normalizedPhone,
       password: hashedPassword,
       avatar: "",
       role: "client",
@@ -131,7 +140,7 @@ router.post("/login", async (req, res) => {
 
     const token = createToken(user);
 
-    return res.json({
+    return res.status(200).json({
       success: true,
       message: "Вход выполнен успешно",
       token,
@@ -147,7 +156,7 @@ router.post("/login", async (req, res) => {
 });
 
 router.get("/me", protect, async (req, res) => {
-  return res.json({
+  return res.status(200).json({
     success: true,
     user: publicUser(req.user),
   });
@@ -158,7 +167,16 @@ router.patch("/me", protect, async (req, res) => {
     const { name, phone, avatar } = req.body;
 
     if (name !== undefined) {
-      req.user.name = name.trim();
+      const normalizedName = name.trim();
+
+      if (normalizedName.length < 2) {
+        return res.status(400).json({
+          success: false,
+          message: "Имя слишком короткое",
+        });
+      }
+
+      req.user.name = normalizedName;
     }
 
     if (phone !== undefined) {
@@ -171,7 +189,7 @@ router.patch("/me", protect, async (req, res) => {
 
     await req.user.save();
 
-    return res.json({
+    return res.status(200).json({
       success: true,
       message: "Профиль обновлён",
       user: publicUser(req.user),

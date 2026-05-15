@@ -3,48 +3,51 @@ import { create } from "zustand";
 export type UserRole = "client" | "employee" | "admin";
 
 export interface User {
+  id: string;
   name: string;
   email: string;
-  password: string;
   phone: string;
   avatar: string;
   role: UserRole;
+  isBlocked?: boolean;
+  createdAt?: string;
 }
 
 interface AuthState {
   user: User;
+  token: string;
   isAuthenticated: boolean;
-  handleLogin: (user: User) => void;
+
+  handleLogin: (user: Partial<User>, token?: string) => void;
   handleLogout: () => void;
   updateProfile: (values: Partial<User>) => void;
   setAvatar: (avatar: string) => void;
   setRole: (role: UserRole) => void;
 }
 
-const USERS_KEY = "click-eat-users";
 const CURRENT_USER_KEY = "click-eat-current-user";
+const TOKEN_KEY = "click-eat-token";
 
 const defaultUser: User = {
+  id: "",
   name: "",
   email: "",
-  password: "",
   phone: "",
   avatar: "",
   role: "client",
 };
 
-function getUsers(): User[] {
-  try {
-    const raw = localStorage.getItem(USERS_KEY);
-    const parsed = raw ? JSON.parse(raw) : [];
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
-function saveUsers(users: User[]) {
-  localStorage.setItem(USERS_KEY, JSON.stringify(users));
+function normalizeUser(user: Partial<User>): User {
+  return {
+    ...defaultUser,
+    ...user,
+    id: user.id || "",
+    name: user.name || "",
+    email: user.email ? user.email.trim().toLowerCase() : "",
+    phone: user.phone || "",
+    avatar: user.avatar || "",
+    role: user.role || "client",
+  };
 }
 
 function getCurrentUser(): User {
@@ -53,16 +56,17 @@ function getCurrentUser(): User {
     if (!raw) return defaultUser;
 
     const parsed = JSON.parse(raw);
-
-    return {
-      ...defaultUser,
-      ...parsed,
-      role: parsed.role || "client",
-      avatar: parsed.avatar || "",
-      phone: parsed.phone || "",
-    };
+    return normalizeUser(parsed);
   } catch {
     return defaultUser;
+  }
+}
+
+function getCurrentToken(): string {
+  try {
+    return localStorage.getItem(TOKEN_KEY) || "";
+  } catch {
+    return "";
   }
 }
 
@@ -70,50 +74,45 @@ function saveCurrentUser(user: User) {
   localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
 }
 
-function updateUserInList(updatedUser: User) {
-  const users = getUsers();
+function saveToken(token: string) {
+  localStorage.setItem(TOKEN_KEY, token);
+}
 
-  const exists = users.some((user) => user.email === updatedUser.email);
-
-  const nextUsers = exists
-    ? users.map((user) =>
-        user.email === updatedUser.email ? { ...user, ...updatedUser } : user
-      )
-    : [...users, updatedUser];
-
-  saveUsers(nextUsers);
+function removeAuthData() {
+  localStorage.removeItem(CURRENT_USER_KEY);
+  localStorage.removeItem(TOKEN_KEY);
 }
 
 const initialUser = getCurrentUser();
+const initialToken = getCurrentToken();
 
 export const useAuth = create<AuthState>((set, get) => ({
   user: initialUser,
-  isAuthenticated: Boolean(initialUser.email),
+  token: initialToken,
+  isAuthenticated: Boolean(initialUser.email && initialToken),
 
-  handleLogin(user) {
-    const normalizedUser: User = {
-      ...defaultUser,
-      ...user,
-      email: user.email.trim().toLowerCase(),
-      role: user.role || "client",
-      avatar: user.avatar || "",
-      phone: user.phone || "",
-    };
+  handleLogin(user, token) {
+    const normalizedUser = normalizeUser(user);
 
     saveCurrentUser(normalizedUser);
-    updateUserInList(normalizedUser);
+
+    if (token) {
+      saveToken(token);
+    }
 
     set({
       user: normalizedUser,
-      isAuthenticated: true,
+      token: token || get().token,
+      isAuthenticated: Boolean(normalizedUser.email && (token || get().token)),
     });
   },
 
   handleLogout() {
-    localStorage.removeItem(CURRENT_USER_KEY);
+    removeAuthData();
 
     set({
       user: defaultUser,
+      token: "",
       isAuthenticated: false,
     });
   },
@@ -121,30 +120,27 @@ export const useAuth = create<AuthState>((set, get) => ({
   updateProfile(values) {
     const currentUser = get().user;
 
-    const updatedUser: User = {
+    const updatedUser = normalizeUser({
       ...currentUser,
       ...values,
-      email: (values.email || currentUser.email).trim().toLowerCase(),
-      role: values.role || currentUser.role || "client",
-    };
+      role: values.role || currentUser.role,
+    });
 
     saveCurrentUser(updatedUser);
-    updateUserInList(updatedUser);
 
     set({
       user: updatedUser,
-      isAuthenticated: Boolean(updatedUser.email),
+      isAuthenticated: Boolean(updatedUser.email && get().token),
     });
   },
 
   setAvatar(avatar) {
-    const updatedUser: User = {
+    const updatedUser = normalizeUser({
       ...get().user,
       avatar,
-    };
+    });
 
     saveCurrentUser(updatedUser);
-    updateUserInList(updatedUser);
 
     set({
       user: updatedUser,
@@ -152,16 +148,23 @@ export const useAuth = create<AuthState>((set, get) => ({
   },
 
   setRole(role) {
-    const updatedUser: User = {
+    const updatedUser = normalizeUser({
       ...get().user,
       role,
-    };
+    });
 
     saveCurrentUser(updatedUser);
-    updateUserInList(updatedUser);
 
     set({
       user: updatedUser,
     });
   },
 }));
+
+export function getAuthToken() {
+  return localStorage.getItem(TOKEN_KEY) || "";
+}
+
+export function clearAuth() {
+  removeAuthData();
+}
