@@ -1,18 +1,18 @@
-import { Navigate } from "react-router";
-import { getAuthUser, getToken } from "../lib/auth";
-import { EmployeePage } from "../pages/employee/page";
+import { Navigate, Outlet } from "react-router";
+import { useAuth } from "../stores/auth.store";
 
 export function EmployeeRoute() {
-  const token = getToken();
-  const user = getAuthUser();
+  const { user, isAuthenticated } = useAuth();
 
-  if (!token || !user) {
+  if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
 
-  if (user.role !== "employee" && user.role !== "admin") {
-    return <Navigate to="/" replace />;
+  const allowedRoles = ["employee", "staff", "admin"];
+
+  if (!allowedRoles.includes(user.role)) {
+    return <Navigate to="/profile" replace />;
   }
 
-  return <EmployeePage />;
+  return <Outlet />;
 }
