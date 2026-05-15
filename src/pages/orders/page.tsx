@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link, useNavigate } from "react-router";
 import {
   FiMinus,
@@ -17,8 +17,6 @@ import {
   FiCheckCircle,
 } from "react-icons/fi";
 import { useAuth } from "../../stores/auth.store";
-import { clearCart } from "../../lib/cart";
-
 
 type CartItem = {
   id: number | string;
@@ -32,8 +30,6 @@ type CartItem = {
 type PaymentMethod = "cash" | "card" | "online";
 
 const CART_KEY = "cart";
-const ORDERS_KEY = "orders";
-
 
 const RESTAURANT_ADDRESS =
   "Фарғона Йўли 15, Toshkent, Toshkent, Узбекистан";
@@ -62,12 +58,6 @@ function saveCart(cart: CartItem[]) {
   localStorage.setItem(CART_KEY, JSON.stringify(cart));
 }
 
-function saveCompletedOrder(order: unknown) {
-  const raw = localStorage.getItem(ORDERS_KEY);
-  const orders = raw ? JSON.parse(raw) : [];
-  localStorage.setItem(ORDERS_KEY, JSON.stringify([order, ...orders]));
-}
-
 async function getAddressFromCoords(lat: number, lng: number) {
   try {
     const response = await fetch(
@@ -88,10 +78,6 @@ async function getAddressFromCoords(lat: number, lng: number) {
 export function OrdersPage() {
   const navigate = useNavigate();
   const user = useAuth((state) => state.user);
-  const [successOrder, setSuccessOrder] = useState<{
-    id: string;
-    total: number;
-  } | null>(null);
 
   const [cart, setCart] = useState<CartItem[]>(getCart());
   const [customerName, setCustomerName] = useState(user.name || "");
@@ -108,6 +94,7 @@ export function OrdersPage() {
     code: string;
     discount: number;
   } | null>(null);
+
   const [promoError, setPromoError] = useState("");
 
   useEffect(() => {
@@ -158,12 +145,12 @@ export function OrdersPage() {
     const updated = cart.map((item) =>
       item.id === id
         ? {
-          ...item,
-          quantity:
-            type === "plus"
-              ? item.quantity + 1
-              : Math.max(1, item.quantity - 1),
-        }
+            ...item,
+            quantity:
+              type === "plus"
+                ? item.quantity + 1
+                : Math.max(1, item.quantity - 1),
+          }
         : item
     );
 
@@ -174,6 +161,7 @@ export function OrdersPage() {
 
   const removeItem = (id: CartItem["id"]) => {
     const updated = cart.filter((item) => item.id !== id);
+
     setCart(updated);
     saveCart(updated);
     window.dispatchEvent(new Event("cart-updated"));
@@ -213,51 +201,13 @@ export function OrdersPage() {
     setPromoCode("");
   };
 
-  
+  const handleGoToCheckout = () => {
+    if (!cart.length) {
+      setPromoError("Добавь блюда в заказ");
+      return;
+    }
 
-    const orderId = `ORD-${Date.now()}`;
-
-    const order = {
-      id: orderId,
-      createdAt: new Date().toISOString(),
-      items: cart,
-      subtotal,
-      deliveryPrice,
-      discount,
-      total,
-      promo: appliedPromo,
-      promoCode: appliedPromo?.code,
-      promoDiscount: discount,
-      paymentMethod,
-      customerName,
-      customerPhone,
-      address,
-      fullAddress: address,
-      coords,
-      restaurantAddress: RESTAURANT_ADDRESS,
-      restaurantCoords: RESTAURANT_COORDS,
-      deliveryTime,
-      comment,
-      status: "completed",
-      bonusPoints: Math.floor(total / 10000),
-      courierName: "Назначается автоматически",
-      restaurantName: cart[0]?.restaurant || "ClickEat Restaurant",
-      branchName: "ClickEat Main Branch",
-      branchAddress: RESTAURANT_ADDRESS,
-    };
-
-    saveCompletedOrder(order);
-
-    clearCart();
-    setCart([]);
-    setAppliedPromo(null);
-    setPromoCode("");
-    setComment("");
-
-    setSuccessOrder({
-      id: orderId,
-      total,
-    });
+    navigate("/checkout");
   };
 
   return (
@@ -275,6 +225,7 @@ export function OrdersPage() {
               <small>Блюд</small>
               <strong>{cart.reduce((sum, item) => sum + item.quantity, 0)}</strong>
             </div>
+
             <div>
               <small>Итого</small>
               <strong>{total.toLocaleString("ru-RU")} сум</strong>
@@ -301,8 +252,10 @@ export function OrdersPage() {
                   <div>
                     <FiShoppingBag />
                   </div>
+
                   <h3>Заказ пока пустой</h3>
                   <p>Добавь блюда из меню, и они появятся здесь.</p>
+
                   <Link to="/menu">Открыть меню</Link>
                 </div>
               ) : (
@@ -324,7 +277,9 @@ export function OrdersPage() {
                         >
                           <FiMinus />
                         </button>
+
                         <span>{item.quantity}</span>
+
                         <button
                           type="button"
                           onClick={() => updateQuantity(item.id, "plus")}
@@ -383,13 +338,16 @@ export function OrdersPage() {
               <div className="orders-map">
                 <iframe
                   title="Карта доставки"
-                  src={`https://www.openstreetmap.org/export/embed.html?bbox=${coords.lng - 0.01
-                    }%2C${coords.lat - 0.01}%2C${coords.lng + 0.01}%2C${coords.lat + 0.01
-                    }&layer=mapnik&marker=${coords.lat}%2C${coords.lng}`}
+                  src={`https://www.openstreetmap.org/export/embed.html?bbox=${
+                    coords.lng - 0.01
+                  }%2C${coords.lat - 0.01}%2C${coords.lng + 0.01}%2C${
+                    coords.lat + 0.01
+                  }&layer=mapnik&marker=${coords.lat}%2C${coords.lng}`}
                 />
 
                 <div className="orders-map-info">
                   <FiMapPin />
+
                   <div>
                     <strong>{address}</strong>
                     <p>Адрес определён по текущей точке на карте.</p>
@@ -399,8 +357,10 @@ export function OrdersPage() {
 
               <div className="orders-comment">
                 <label>Комментарий к заказу</label>
+
                 <div>
                   <FiMessageSquare />
+
                   <textarea
                     value={comment}
                     onChange={(e) => setComment(e.target.value)}
@@ -420,10 +380,12 @@ export function OrdersPage() {
                   label="Сумма блюд"
                   value={`${subtotal.toLocaleString("ru-RU")} сум`}
                 />
+
                 <SummaryRow
                   label="Доставка"
                   value={`${deliveryPrice.toLocaleString("ru-RU")} сум`}
                 />
+
                 <SummaryRow
                   label="Промокод"
                   value={
@@ -432,6 +394,7 @@ export function OrdersPage() {
                       : "Не выбран"
                   }
                 />
+
                 <SummaryRow label="Время доставки" value={deliveryTime} />
               </div>
 
@@ -491,11 +454,13 @@ export function OrdersPage() {
                   title="Время доставки"
                   text={deliveryTime}
                 />
+
                 <InfoBox
                   icon={<FiTruck />}
                   title="Курьер"
                   text="Назначается автоматически"
                 />
+
                 <InfoBox icon={<FiCheckCircle />} title="Адрес" text={address} />
               </div>
 
@@ -507,7 +472,7 @@ export function OrdersPage() {
               <button
                 type="button"
                 className="orders-confirm-btn"
-                onClick={() => navigate("/checkout")}
+                onClick={handleGoToCheckout}
               >
                 Оформить заказ
               </button>
@@ -515,36 +480,6 @@ export function OrdersPage() {
           </aside>
         </div>
       </div>
-      {successOrder && (
-        <div className="order-success-overlay">
-          <div className="order-success-modal">
-            <div className="order-success-icon">
-              <FiCheckCircle />
-            </div>
-
-            <span>ClickEat Order</span>
-
-            <h2>Заказ успешно оформлен</h2>
-
-            <p>
-              Заказ #{successOrder.id.slice(-6)} добавлен в историю. Корзина
-              очищена, данные заказа сохранены.
-            </p>
-
-            <strong>
-              {successOrder.total.toLocaleString("ru-RU")} сум
-            </strong>
-
-            <div className="order-success-actions">
-              <Link to="/order-history">Открыть историю</Link>
-
-              <button type="button" onClick={() => setSuccessOrder(null)}>
-                Остаться здесь
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </section>
   );
 }
@@ -557,7 +492,7 @@ function Field({
   placeholder,
 }: {
   label: string;
-  icon: React.ReactNode;
+  icon: ReactNode;
   value: string;
   onChange: (value: string) => void;
   placeholder: string;
@@ -565,8 +500,10 @@ function Field({
   return (
     <div className="orders-field">
       <label>{label}</label>
+
       <div>
         <span>{icon}</span>
+
         <input
           value={value}
           onChange={(e) => onChange(e.target.value)}
@@ -593,7 +530,7 @@ function PaymentButton({
   onClick,
 }: {
   active: boolean;
-  icon: React.ReactNode;
+  icon: ReactNode;
   title: string;
   onClick: () => void;
 }) {
@@ -614,13 +551,14 @@ function InfoBox({
   title,
   text,
 }: {
-  icon: React.ReactNode;
+  icon: ReactNode;
   title: string;
   text: string;
 }) {
   return (
     <div className="orders-info-box">
       <span>{icon}</span>
+
       <div>
         <strong>{title}</strong>
         <p>{text}</p>
