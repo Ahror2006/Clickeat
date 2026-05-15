@@ -1,4 +1,12 @@
-import { useMemo, useRef, useState } from "react";
+import {
+  forwardRef,
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type FormEvent,
+  type KeyboardEvent,
+} from "react";
 import { Link, useNavigate } from "react-router";
 import { Helmet } from "react-helmet";
 import { useAuth } from "../../stores/auth.store";
@@ -29,31 +37,28 @@ export const RegisterPage = () => {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const passwordTouched = form.password.length > 0;
-  const confirmTouched = form.confirmPassword.length > 0;
-
   const passwordStatus = useMemo(() => {
-    if (!passwordTouched) return null;
+    if (!form.password) return "empty";
     if (form.password.length < 8) return "short";
     return "ok";
-  }, [form.password, passwordTouched]);
+  }, [form.password]);
 
   const confirmStatus = useMemo(() => {
-    if (!confirmTouched) return null;
-    if (form.confirmPassword !== form.password) return "mismatch";
+    if (!form.confirmPassword) return "empty";
+    if (form.password !== form.confirmPassword) return "mismatch";
     return "ok";
-  }, [form.confirmPassword, form.password, confirmTouched]);
+  }, [form.password, form.confirmPassword]);
 
   const focusNext = (
-    event: React.KeyboardEvent<HTMLInputElement>,
-    currentValue: string,
+    event: KeyboardEvent<HTMLInputElement>,
+    value: string,
     next?: React.RefObject<HTMLInputElement | null>
   ) => {
     if (event.key !== "Enter") return;
 
     event.preventDefault();
 
-    if (!currentValue.trim()) {
+    if (!value.trim()) {
       setError("Сначала заполни это поле");
       return;
     }
@@ -69,20 +74,20 @@ export const RegisterPage = () => {
   };
 
   const handleChange =
-    (field: keyof typeof form) =>
-    (event: React.ChangeEvent<HTMLInputElement>) => {
+    (field: keyof typeof form) => (event: ChangeEvent<HTMLInputElement>) => {
       setForm((prev) => ({
         ...prev,
         [field]: event.target.value,
       }));
+
+      setError("");
     };
 
   const handleSubmit = async () => {
-    setError("");
-
     const name = form.name.trim();
     const email = form.email.trim().toLowerCase();
-    const phone = `${countryCode} ${form.phone.trim()}`.trim();
+    const phoneOnly = form.phone.trim();
+    const phone = `${countryCode} ${phoneOnly}`.trim();
     const password = form.password.trim();
     const confirmPassword = form.confirmPassword.trim();
 
@@ -98,7 +103,7 @@ export const RegisterPage = () => {
       return;
     }
 
-    if (!form.phone.trim()) {
+    if (!phoneOnly) {
       setError("Введите телефон");
       phoneRef.current?.focus();
       return;
@@ -130,6 +135,7 @@ export const RegisterPage = () => {
 
     try {
       setLoading(true);
+      setError("");
 
       const response = await api.post("/auth/register", {
         name,
@@ -146,11 +152,15 @@ export const RegisterPage = () => {
 
       navigate("/");
     } catch (err: any) {
-      const message = err?.response?.data?.message;
-      setError(message || "Ошибка регистрации. Попробуй снова");
+      setError(err?.response?.data?.message || "Ошибка регистрации");
     } finally {
       setLoading(false);
     }
+  };
+
+  const onSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    void handleSubmit();
   };
 
   return (
@@ -164,30 +174,25 @@ export const RegisterPage = () => {
         style={{ backgroundImage: `url(${AuthBg})` }}
       >
         <div className="absolute inset-0 bg-[rgba(30,20,10,0.28)] backdrop-blur-[4px]" />
+
         <div className="absolute inset-y-0 right-0 hidden w-[55%] bg-[radial-gradient(circle_at_center,rgba(255,125,0,0.92)_0%,rgba(255,110,0,0.86)_35%,rgba(255,110,0,0.68)_58%,rgba(255,110,0,0.20)_85%,transparent_100%)] lg:block" />
 
-        <div className="relative z-10 mx-auto flex min-h-screen max-w-[1400px] items-center justify-center gap-8 px-4 py-6 sm:px-8 lg:justify-between lg:py-10">
-          <div className="w-full max-w-[540px] rounded-[28px] bg-[#f5e4da]/95 p-6 shadow-[0_18px_50px_rgba(0,0,0,0.14)] sm:rounded-[34px] sm:p-10">
-            <div className="inline-flex rounded-full bg-[#ffe8d7] px-4 py-2 text-[14px] font-semibold text-[#ff6b00]">
+        <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-[1400px] items-center justify-center px-3 py-4 sm:px-6 sm:py-6 lg:justify-between lg:px-8 lg:py-10">
+          <div className="w-full max-w-[540px] rounded-[26px] bg-[#f5e4da]/95 p-5 shadow-[0_18px_50px_rgba(0,0,0,0.14)] sm:p-8 lg:p-10">
+            <div className="inline-flex rounded-full bg-[#ffe8d7] px-4 py-2 text-[13px] font-semibold text-[#ff6b00] sm:text-[14px]">
               ClickEat Account
             </div>
 
-            <h1 className="mt-7 text-[42px] font-extrabold leading-none text-[#2f3542] sm:text-[56px]">
+            <h1 className="mt-5 text-[38px] font-extrabold leading-none text-[#2f3542] sm:text-[50px] lg:text-[56px]">
               Регистрация
             </h1>
 
-            <p className="mt-5 text-[17px] leading-8 text-[#71809a] sm:text-[18px]">
+            <p className="mt-4 text-[15px] leading-7 text-[#71809a] sm:text-[17px] sm:leading-8">
               Создай аккаунт и начни заказывать любимую еду быстро и удобно
             </p>
 
-            <form
-              onSubmit={(event) => {
-                event.preventDefault();
-                void handleSubmit();
-              }}
-              className="mt-8 space-y-4"
-            >
-              <Input
+            <form onSubmit={onSubmit} className="mt-6 space-y-3 sm:mt-8 sm:space-y-4">
+              <AuthInput
                 ref={nameRef}
                 placeholder="Ваше имя"
                 value={form.name}
@@ -196,7 +201,7 @@ export const RegisterPage = () => {
                 autoComplete="name"
               />
 
-              <Input
+              <AuthInput
                 ref={emailRef}
                 type="email"
                 placeholder="Email"
@@ -206,30 +211,28 @@ export const RegisterPage = () => {
                 autoComplete="email"
               />
 
-              <div className="grid grid-cols-[125px_1fr] gap-3 sm:grid-cols-[130px_1fr]">
+              <div className="grid grid-cols-[115px_1fr] gap-3 sm:grid-cols-[130px_1fr]">
                 <select
                   value={countryCode}
                   onChange={(event) => setCountryCode(event.target.value)}
-                  className="rounded-[18px] border border-transparent bg-[#f3f1ef] px-4 py-4 text-[16px] text-[#4d5868] outline-none"
+                  className="w-full rounded-[16px] border border-transparent bg-[#f3f1ef] px-3 py-3 text-[15px] text-[#4d5868] outline-none transition focus:border-[#ff8b39] focus:bg-white sm:px-4 sm:py-4 sm:text-[16px]"
                 >
                   <option>UZ +998</option>
                   <option>KZ +7</option>
                   <option>RU +7</option>
                 </select>
 
-                <Input
+                <AuthInput
                   ref={phoneRef}
                   placeholder="90 123 45 67"
                   value={form.phone}
                   onChange={handleChange("phone")}
-                  onKeyDown={(event) =>
-                    focusNext(event, form.phone, passwordRef)
-                  }
+                  onKeyDown={(event) => focusNext(event, form.phone, passwordRef)}
                   autoComplete="tel"
                 />
               </div>
 
-              <Input
+              <AuthInput
                 ref={passwordRef}
                 type="password"
                 placeholder="Пароль"
@@ -241,58 +244,56 @@ export const RegisterPage = () => {
                 autoComplete="new-password"
               />
 
-              {passwordStatus === "short" ? (
-                <p className="text-[14px] font-semibold text-[#d14d4d]">
+              {passwordStatus === "short" && (
+                <p className="text-[13px] font-semibold text-[#d14d4d] sm:text-[14px]">
                   Минимум 8 символов
                 </p>
-              ) : null}
+              )}
 
-              {passwordStatus === "ok" ? (
-                <p className="text-[14px] font-semibold text-[#3ab45b]">
+              {passwordStatus === "ok" && (
+                <p className="text-[13px] font-semibold text-[#31a853] sm:text-[14px]">
                   Пароль подходит
                 </p>
-              ) : null}
+              )}
 
-              <Input
+              <AuthInput
                 ref={confirmPasswordRef}
                 type="password"
                 placeholder="Подтвердите пароль"
                 value={form.confirmPassword}
                 onChange={handleChange("confirmPassword")}
-                onKeyDown={(event) =>
-                  focusNext(event, form.confirmPassword)
-                }
+                onKeyDown={(event) => focusNext(event, form.confirmPassword)}
                 autoComplete="new-password"
               />
 
-              {confirmStatus === "mismatch" ? (
-                <p className="text-[14px] font-semibold text-[#f08a24]">
+              {confirmStatus === "mismatch" && (
+                <p className="text-[13px] font-semibold text-[#f08a24] sm:text-[14px]">
                   Пароли не совпадают
                 </p>
-              ) : null}
+              )}
 
-              {confirmStatus === "ok" ? (
-                <p className="text-[14px] font-semibold text-[#3ab45b]">
+              {confirmStatus === "ok" && (
+                <p className="text-[13px] font-semibold text-[#31a853] sm:text-[14px]">
                   Пароли совпадают
                 </p>
-              ) : null}
+              )}
 
-              {error ? (
-                <div className="rounded-[18px] border border-[#ffd7d2] bg-[#fff3f1] px-4 py-3 text-[14px] font-medium text-[#d14d4d]">
+              {error && (
+                <div className="rounded-[16px] border border-[#ffd7d2] bg-[#fff3f1] px-4 py-3 text-[13px] font-semibold text-[#d14d4d] sm:text-[14px]">
                   {error}
                 </div>
-              ) : null}
+              )}
 
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full rounded-[20px] bg-[#ff8b39] px-5 py-4 text-[18px] font-bold text-white shadow-[0_16px_30px_rgba(255,107,0,0.18)] transition hover:translate-y-[-1px] hover:bg-[#ff7a1f] disabled:cursor-not-allowed disabled:opacity-60"
+                className="w-full rounded-[18px] bg-[#ff8b39] px-5 py-3 text-[17px] font-bold text-white shadow-[0_16px_30px_rgba(255,107,0,0.18)] transition hover:translate-y-[-1px] hover:bg-[#ff7a1f] disabled:cursor-not-allowed disabled:opacity-60 sm:py-4 sm:text-[18px]"
               >
                 {loading ? "Создаём..." : "Создать аккаунт"}
               </button>
             </form>
 
-            <p className="mt-8 text-center text-[17px] text-[#7b8698]">
+            <p className="mt-6 text-center text-[15px] text-[#7b8698] sm:mt-8 sm:text-[17px]">
               Уже есть аккаунт?{" "}
               <Link to="/login" className="font-bold text-[#ff6b00]">
                 Войти
@@ -322,27 +323,14 @@ export const RegisterPage = () => {
   );
 };
 
-const Input = ({
-  placeholder,
-  value,
-  onChange,
-  onKeyDown,
-  type = "text",
-  autoComplete,
-  ref,
-}: React.InputHTMLAttributes<HTMLInputElement> & {
-  ref?: React.Ref<HTMLInputElement>;
-}) => {
-  return (
-    <input
-      ref={ref}
-      type={type}
-      placeholder={placeholder}
-      value={value}
-      onChange={onChange}
-      onKeyDown={onKeyDown}
-      autoComplete={autoComplete}
-      className="w-full rounded-[18px] border border-transparent bg-[#f3f1ef] px-5 py-4 text-[16px] text-[#4d5868] outline-none transition focus:border-[#ff8b39] focus:bg-white"
-    />
-  );
-};
+const AuthInput = forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(
+  function AuthInput({ className = "", ...props }, ref) {
+    return (
+      <input
+        ref={ref}
+        {...props}
+        className={`w-full rounded-[16px] border border-transparent bg-[#f3f1ef] px-4 py-3 text-[15px] text-[#4d5868] outline-none transition focus:border-[#ff8b39] focus:bg-white sm:px-5 sm:py-4 sm:text-[16px] ${className}`}
+      />
+    );
+  }
+);
