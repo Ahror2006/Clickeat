@@ -100,10 +100,10 @@ export default function AdminPage() {
       }
 
       const [usersResponse, statsResponse] = await Promise.all([
-        fetch("http://localhost:5000/api/admin/users", {
+        fetch("https://clickeat-5wy1.onrender.com/api/admin/users", {
           headers: authHeaders,
         }),
-        fetch("http://localhost:5000/api/admin/stats", {
+        fetch("https://clickeat-5wy1.onrender.com/api/admin/stats", {
           headers: authHeaders,
         }),
       ]);
@@ -182,7 +182,7 @@ export default function AdminPage() {
       setActionLoading(true);
 
       const response = await fetch(
-        `http://localhost:5000/api/admin/users/${id}/role`,
+        `https://clickeat-5wy1.onrender.com/api/admin/users/${id}/role`,
         {
           method: "PUT",
           headers: {
@@ -224,7 +224,7 @@ export default function AdminPage() {
       setActionLoading(true);
 
       const response = await fetch(
-        `http://localhost:5000/api/admin/users/${id}/block`,
+        `https://clickeat-5wy1.onrender.com/api/admin/users/${id}/block`,
         {
           method: "PUT",
           headers: authHeaders,
@@ -270,7 +270,7 @@ export default function AdminPage() {
       setActionLoading(true);
 
       const response = await fetch(
-        `http://localhost:5000/api/admin/users/${id}`,
+        `https://clickeat-5wy1.onrender.com/api/admin/users/${id}`,
         {
           method: "DELETE",
           headers: authHeaders,

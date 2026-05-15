@@ -119,7 +119,7 @@ export function EmployeePage() {
       setLoading(true);
       setError("");
 
-      const response = await fetch("http://localhost:5000/api/orders", {
+      const response = await fetch("https://clickeat-5wy1.onrender.com/api/orders", {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -142,7 +142,7 @@ export function EmployeePage() {
 
   const changeStatus = async (orderId: string, status: OrderStatus) => {
     const response = await fetch(
-      `http://localhost:5000/api/orders/${orderId}/status`,
+      `https://clickeat-5wy1.onrender.com/api/orders/${orderId}/status`,
       {
         method: "PATCH",
         headers: {
@@ -191,7 +191,7 @@ export function EmployeePage() {
       };
 
       const response = await fetch(
-        `http://localhost:5000/api/orders/${order.id}/courier-location`,
+        `https://clickeat-5wy1.onrender.com/api/orders/${order.id}/courier-location`,
         {
           method: "PATCH",
           headers: {

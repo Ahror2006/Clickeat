@@ -1,0 +1,1 @@
+export const API_URL = "https://clickeat-5wy1.onrender.com";
