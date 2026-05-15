@@ -3,7 +3,7 @@ import { create } from "zustand";
 export type UserRole = "client" | "employee" | "admin";
 
 export interface User {
-  id: string;
+  id?: string;
   name: string;
   email: string;
   phone: string;
