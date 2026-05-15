@@ -9,6 +9,7 @@ export interface User {
   phone: string;
   avatar: string;
   role: UserRole;
+  password?: string;
   isBlocked?: boolean;
   createdAt?: string;
 }
