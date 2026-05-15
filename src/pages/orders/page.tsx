@@ -213,26 +213,7 @@ export function OrdersPage() {
     setPromoCode("");
   };
 
-  const handleConfirmOrder = () => {
-    if (!cart.length) {
-      setPromoError("Добавь блюда в заказ");
-      return;
-    }
-
-    if (!customerName.trim()) {
-      setPromoError("Введите имя клиента");
-      return;
-    }
-
-    if (!customerPhone.trim()) {
-      setPromoError("Введите телефон клиента");
-      return;
-    }
-
-    if (!address.trim()) {
-      setPromoError("Введите адрес доставки");
-      return;
-    }
+  
 
     const orderId = `ORD-${Date.now()}`;
 

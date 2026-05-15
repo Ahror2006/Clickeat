@@ -1,525 +1,698 @@
-import { useEffect, useMemo, useState } from "react";
-import {
-  FiCheckCircle,
-  FiClock,
-  FiMapPin,
-  FiNavigation,
-  FiPackage,
-  FiRefreshCw,
-  FiTruck,
-  FiXCircle,
-} from "react-icons/fi";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link } from "react-router";
+import {
+  FiMinus,
+  FiPlus,
+  FiTrash2,
+  FiShoppingBag,
+  FiUser,
+  FiPhone,
+  FiMapPin,
+  FiClock,
+  FiTruck,
+  FiCreditCard,
+  FiDollarSign,
+  FiGlobe,
+  FiMessageSquare,
+  FiCheckCircle,
+} from "react-icons/fi";
+import { useAuth } from "../../stores/auth.store";
 import { getToken } from "../../lib/auth";
-import { socket } from "../../lib/socket";
 
-type OrderStatus =
-  | "pending"
-  | "accepted"
-  | "cooking"
-  | "delivering"
-  | "completed"
-  | "cancelled";
-
-type Location = {
-  lat: number | null;
-  lng: number | null;
-  address?: string;
-};
-
-type OrderItem = {
-  name: string;
+type CartItem = {
+  id: number | string;
+  title: string;
+  image?: string;
   price: number;
   quantity: number;
-  image?: string;
+  restaurant?: string;
 };
 
-type Order = {
+type PaymentMethod = "cash" | "card" | "online";
+
+type SuccessOrder = {
   id: string;
-  customerName: string;
-  customerPhone: string;
-  address: string;
-  deliveryLocation?: Location;
-  restaurantName: string;
-  restaurantLocation?: Location;
-  courierName?: string;
-  courierPhone?: string;
-  courierLocation?: Location;
-  items: OrderItem[];
-  totalPrice: number;
-  paymentMethod: string;
-  status: OrderStatus;
-  comment?: string;
-  createdAt: string;
+  total: number;
 };
 
-const statuses: OrderStatus[] = [
-  "pending",
-  "accepted",
-  "cooking",
-  "delivering",
-  "completed",
-  "cancelled",
+const CART_KEY = "cart";
+const ORDERS_KEY = "orders";
+const API_URL = "https://clickeat-5wy1.onrender.com";
+
+const RESTAURANT_ADDRESS =
+  "Фарғона Йўли 15, Toshkent, Toshkent, Узбекистан";
+
+const RESTAURANT_COORDS = {
+  lat: 41.284,
+  lng: 69.308,
+};
+
+const PROMO_CODES = [
+  { code: "CLICK10", type: "percent", value: 10 },
+  { code: "FOOD5000", type: "fixed", value: 5000 },
 ];
 
-const statusLabels: Record<OrderStatus, string> = {
-  pending: "Новый",
-  accepted: "Принят",
-  cooking: "Готовится",
-  delivering: "Доставка",
-  completed: "Завершён",
-  cancelled: "Отменён",
-};
-
-const statusIcons: Record<OrderStatus, React.ReactNode> = {
-  pending: <FiClock />,
-  accepted: <FiCheckCircle />,
-  cooking: <FiPackage />,
-  delivering: <FiTruck />,
-  completed: <FiCheckCircle />,
-  cancelled: <FiXCircle />,
-};
-
-function formatSum(value: number) {
-  return `${value.toLocaleString("ru-RU")} сум`;
+function getCart(): CartItem[] {
+  try {
+    const raw = localStorage.getItem(CART_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
 }
 
-function cleanAddress(address = "") {
-  return address
-    .replace(/,\s*Узбекистан/gi, "")
-    .replace(/,\s*Uzbekistan/gi, "")
-    .replace(/,\s*Toshkent/gi, "")
-    .replace(/,\s*Ташкент/gi, "")
-    .replace(/,\s*100000/gi, "")
-    .replace(/\s+/g, " ")
-    .trim();
+function saveCart(cart: CartItem[]) {
+  localStorage.setItem(CART_KEY, JSON.stringify(cart));
 }
 
-function getCourierBase(order: Order) {
-  const courier = order.courierLocation;
-  const restaurant = order.restaurantLocation;
+function saveCompletedOrder(order: unknown) {
+  try {
+    const raw = localStorage.getItem(ORDERS_KEY);
+    const orders = raw ? JSON.parse(raw) : [];
+    localStorage.setItem(ORDERS_KEY, JSON.stringify([order, ...orders]));
+  } catch {
+    localStorage.setItem(ORDERS_KEY, JSON.stringify([order]));
+  }
+}
 
-  return {
-    lat: courier?.lat ?? restaurant?.lat ?? 41.311081,
-    lng: courier?.lng ?? restaurant?.lng ?? 69.240562,
+async function getAddressFromCoords(lat: number, lng: number) {
+  try {
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&accept-language=ru`
+    );
+
+    const data = await response.json();
+
+    return (
+      data.display_name ||
+      `Ташкент, точка доставки: ${lat.toFixed(5)}, ${lng.toFixed(5)}`
+    );
+  } catch {
+    return `Ташкент, точка доставки: ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+  }
+}
+
+export function OrdersPage() {
+  const user = useAuth((state) => state.user);
+
+  const [cart, setCart] = useState<CartItem[]>(getCart());
+  const [customerName, setCustomerName] = useState(user.name || "");
+  const [customerPhone, setCustomerPhone] = useState(user.phone || "");
+
+  const [address, setAddress] = useState(RESTAURANT_ADDRESS);
+  const [coords, setCoords] = useState(RESTAURANT_COORDS);
+
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
+  const [comment, setComment] = useState("");
+
+  const [promoCode, setPromoCode] = useState("");
+  const [appliedPromo, setAppliedPromo] = useState<{
+    code: string;
+    discount: number;
+  } | null>(null);
+
+  const [promoError, setPromoError] = useState("");
+  const [submitLoading, setSubmitLoading] = useState(false);
+  const [successOrder, setSuccessOrder] = useState<SuccessOrder | null>(null);
+
+  useEffect(() => {
+    if (user.name) setCustomerName(user.name);
+    if (user.phone) setCustomerPhone(user.phone);
+  }, [user.name, user.phone]);
+
+  useEffect(() => {
+    if (!navigator.geolocation) {
+      setAddress(RESTAURANT_ADDRESS);
+      setCoords(RESTAURANT_COORDS);
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+
+        setCoords({ lat, lng });
+
+        const readableAddress = await getAddressFromCoords(lat, lng);
+        setAddress(readableAddress);
+      },
+      () => {
+        setAddress(RESTAURANT_ADDRESS);
+        setCoords(RESTAURANT_COORDS);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0,
+      }
+    );
+  }, []);
+
+  const subtotal = useMemo(
+    () => cart.reduce((sum, item) => sum + item.price * item.quantity, 0),
+    [cart]
+  );
+
+  const deliveryPrice = cart.length > 0 ? 12000 : 0;
+  const discount = appliedPromo?.discount || 0;
+  const total = Math.max(0, subtotal + deliveryPrice - discount);
+  const deliveryTime = cart.length > 0 ? "35–45 минут" : "—";
+
+  const updateQuantity = (id: CartItem["id"], type: "plus" | "minus") => {
+    const updated = cart.map((item) =>
+      item.id === id
+        ? {
+            ...item,
+            quantity:
+              type === "plus"
+                ? item.quantity + 1
+                : Math.max(1, item.quantity - 1),
+          }
+        : item
+    );
+
+    setCart(updated);
+    saveCart(updated);
   };
-}
 
-export function EmployeePage() {
-  const token = getToken();
+  const removeItem = (id: CartItem["id"]) => {
+    const updated = cart.filter((item) => item.id !== id);
+    setCart(updated);
+    saveCart(updated);
+  };
 
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [activeStatus, setActiveStatus] = useState<OrderStatus | "all">("all");
-  const [loading, setLoading] = useState(true);
-  const [movingId, setMovingId] = useState("");
-  const [error, setError] = useState("");
+  const handleApplyPromo = () => {
+    const normalized = promoCode.trim().toUpperCase();
+    setPromoError("");
 
-  const fetchOrders = async () => {
+    if (!normalized) {
+      setPromoError("Введите промокод");
+      return;
+    }
+
+    const found = PROMO_CODES.find((item) => item.code === normalized);
+
+    if (!found) {
+      setPromoError("Промокод не найден");
+      return;
+    }
+
+    let promoDiscount = 0;
+
+    if (found.type === "percent") {
+      promoDiscount = Math.floor((subtotal * found.value) / 100);
+    }
+
+    if (found.type === "fixed") {
+      promoDiscount = found.value;
+    }
+
+    setAppliedPromo({
+      code: found.code,
+      discount: promoDiscount,
+    });
+
+    setPromoCode("");
+  };
+
+  const handleSubmitOrder = async () => {
     try {
-      setLoading(true);
-      setError("");
+      setPromoError("");
 
-      const response = await fetch("https://clickeat-5wy1.onrender.com/api/orders", {
+      if (!cart.length) {
+        setPromoError("Добавь блюда в заказ");
+        return;
+      }
+
+      if (!customerName.trim()) {
+        setPromoError("Введите имя клиента");
+        return;
+      }
+
+      if (!customerPhone.trim()) {
+        setPromoError("Введите телефон клиента");
+        return;
+      }
+
+      if (!address.trim()) {
+        setPromoError("Введите адрес доставки");
+        return;
+      }
+
+      const token = getToken();
+
+      if (!token) {
+        setPromoError("Сначала войдите в аккаунт");
+        return;
+      }
+
+      setSubmitLoading(true);
+
+      const payload = {
+        customerName: customerName.trim(),
+        customerPhone: customerPhone.trim(),
+        address: address.trim(),
+        deliveryLocation: {
+          lat: coords.lat,
+          lng: coords.lng,
+          address: address.trim(),
+        },
+        restaurantName: cart[0]?.restaurant || "ClickEat Restaurant",
+        restaurantLocation: {
+          lat: RESTAURANT_COORDS.lat,
+          lng: RESTAURANT_COORDS.lng,
+          address: RESTAURANT_ADDRESS,
+        },
+        items: cart.map((item) => ({
+          name: item.title,
+          price: item.price,
+          quantity: item.quantity,
+          image: item.image || "",
+        })),
+        totalPrice: total,
+        paymentMethod,
+        comment,
+        estimatedDeliveryTime: deliveryTime,
+      };
+
+      const response = await fetch(`${API_URL}/api/orders`, {
+        method: "POST",
         headers: {
+          "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
+        body: JSON.stringify(payload),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        setError(data.message || "Ошибка загрузки заказов");
+        setPromoError(data.message || "Не удалось оформить заказ");
         return;
       }
 
-      setOrders(data.orders || []);
-    } catch {
-      setError("Backend не отвечает");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const changeStatus = async (orderId: string, status: OrderStatus) => {
-    const response = await fetch(
-      `https://clickeat-5wy1.onrender.com/api/orders/${orderId}/status`,
-      {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ status }),
-      }
-    );
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      alert(data.message || "Ошибка изменения статуса");
-      return;
-    }
-
-    setOrders((prev) =>
-      prev.map((order) => (order.id === orderId ? data.order : order))
-    );
-  };
-
-  const moveCourier = async (
-    order: Order,
-    direction: "up" | "down" | "left" | "right"
-  ) => {
-    try {
-      setMovingId(order.id);
-
-      const current = getCourierBase(order);
-      const step = 0.0012;
-
-      const next = {
-        lat:
-          direction === "up"
-            ? current.lat + step
-            : direction === "down"
-              ? current.lat - step
-              : current.lat,
-        lng:
-          direction === "right"
-            ? current.lng + step
-            : direction === "left"
-              ? current.lng - step
-              : current.lng,
+      const createdOrder = data.order || {
+        id: `ORD-${Date.now()}`,
+        total,
+        ...payload,
+        createdAt: new Date().toISOString(),
       };
 
-      const response = await fetch(
-        `https://clickeat-5wy1.onrender.com/api/orders/${order.id}/courier-location`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            lat: next.lat,
-            lng: next.lng,
-            address: "Курьер в пути",
-            courierName: order.courierName || "ClickEat Courier",
-            courierPhone: order.courierPhone || "+998901112233",
-          }),
-        }
-      );
+      saveCompletedOrder(createdOrder);
 
-      const data = await response.json();
+      localStorage.removeItem(CART_KEY);
+      setCart([]);
 
-      if (!response.ok) {
-        alert(data.message || "Ошибка обновления локации курьера");
-        return;
-      }
-
-      if (order.status !== "delivering") {
-        await changeStatus(order.id, "delivering");
-      }
-
-      setOrders((prev) =>
-        prev.map((item) => (item.id === order.id ? data.order : item))
-      );
+      setSuccessOrder({
+        id: createdOrder.id || createdOrder._id || `ORD-${Date.now()}`,
+        total,
+      });
+    } catch {
+      setPromoError("Backend не отвечает");
     } finally {
-      setMovingId("");
+      setSubmitLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchOrders();
+  if (successOrder) {
+    return (
+      <section className="orders-page pb-14">
+        <div className="mx-auto max-w-[900px] px-4">
+          <div className="orders-card text-center">
+            <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-orange-100 text-4xl text-[#ff6b00]">
+              <FiCheckCircle />
+            </div>
 
-    socket.connect();
+            <span>ClickEat Order</span>
 
-    socket.on("order:created", (newOrder: Order) => {
-      setOrders((prev) => [newOrder, ...prev]);
-    });
+            <h2>Заказ успешно оформлен</h2>
 
-    socket.on("order:status-updated", (updatedOrder: Order) => {
-      setOrders((prev) =>
-        prev.map((order) =>
-          order.id === updatedOrder.id ? updatedOrder : order
-        )
-      );
-    });
+            <p>
+              Заказ #{successOrder.id.slice(-6)} добавлен в историю. Корзина
+              очищена, данные заказа сохранены.
+            </p>
 
-    socket.on("courier:location-updated", (updatedOrder: Order) => {
-      setOrders((prev) =>
-        prev.map((order) =>
-          order.id === updatedOrder.id ? updatedOrder : order
-        )
-      );
-    });
+            <strong>{successOrder.total.toLocaleString("ru-RU")} сум</strong>
 
-    return () => {
-      socket.off("order:created");
-      socket.off("order:status-updated");
-      socket.off("courier:location-updated");
-    };
-  }, []);
+            <div className="order-success-actions mt-6 flex justify-center gap-3">
+              <Link to="/order-history" className="orders-orange-btn">
+                Открыть историю
+              </Link>
 
-  const stats = useMemo(() => {
-    return {
-      all: orders.length,
-      pending: orders.filter((o) => o.status === "pending").length,
-      accepted: orders.filter((o) => o.status === "accepted").length,
-      cooking: orders.filter((o) => o.status === "cooking").length,
-      delivering: orders.filter((o) => o.status === "delivering").length,
-      completed: orders.filter((o) => o.status === "completed").length,
-      cancelled: orders.filter((o) => o.status === "cancelled").length,
-    };
-  }, [orders]);
-
-  const filteredOrders = useMemo(() => {
-    if (activeStatus === "all") return orders;
-    return orders.filter((order) => order.status === activeStatus);
-  }, [orders, activeStatus]);
+              <button
+                type="button"
+                className="orders-confirm-btn"
+                onClick={() => setSuccessOrder(null)}
+              >
+                Остаться здесь
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   return (
-    <section className="px-10 pb-16">
-      <div className="mx-auto max-w-[1450px]">
-        <div className="mb-10 flex items-end justify-between">
+    <section className="orders-page pb-14">
+      <div className="mx-auto max-w-[1320px] px-4">
+        <div className="orders-hero">
           <div>
-            <p className="font-bold text-[#ff6b00]">ClickEat Employee</p>
-            <h1 className="text-[52px] font-extrabold text-[#2f3542]">
-              Панель сотрудника
-            </h1>
-            <p className="mt-3 text-[#7b8698]">
-              Управление заказами, статусами доставки и курьером.
-            </p>
+            <span>ClickEat Checkout</span>
+            <h1>Оформление заказа</h1>
+            <p>Проверь блюда, адрес доставки, способ оплаты и подтверди заказ.</p>
           </div>
 
-          <button
-            onClick={fetchOrders}
-            className="flex items-center gap-2 rounded-[18px] bg-[#ff6b00] px-5 py-4 font-extrabold text-white"
-          >
-            <FiRefreshCw />
-            Обновить
-          </button>
+          <div className="orders-hero-stats">
+            <div>
+              <small>Блюд</small>
+              <strong>{cart.reduce((sum, item) => sum + item.quantity, 0)}</strong>
+            </div>
+            <div>
+              <small>Итого</small>
+              <strong>{total.toLocaleString("ru-RU")} сум</strong>
+            </div>
+          </div>
         </div>
 
-        {loading && (
-          <div className="rounded-[30px] bg-white p-8 text-xl font-bold shadow">
-            Загружаем заказы...
-          </div>
-        )}
+        <div className="orders-grid">
+          <div className="orders-left">
+            <div className="orders-card">
+              <div className="orders-card-head">
+                <div>
+                  <h2>Состав заказа</h2>
+                  <p>Выбранные блюда отображаются здесь.</p>
+                </div>
 
-        {error && (
-          <div className="rounded-[30px] bg-red-50 p-8 font-bold text-red-600">
-            {error}
-          </div>
-        )}
+                <Link to="/menu" className="orders-orange-btn">
+                  Добавить блюда
+                </Link>
+              </div>
 
-        {!loading && !error && (
-          <>
-            <div className="grid grid-cols-4 gap-5">
-              <StatusCard title="Все" value={stats.all} active={activeStatus === "all"} onClick={() => setActiveStatus("all")} />
-              <StatusCard title="Новые" value={stats.pending} active={activeStatus === "pending"} onClick={() => setActiveStatus("pending")} />
-              <StatusCard title="Готовятся" value={stats.cooking} active={activeStatus === "cooking"} onClick={() => setActiveStatus("cooking")} />
-              <StatusCard title="Доставка" value={stats.delivering} active={activeStatus === "delivering"} onClick={() => setActiveStatus("delivering")} />
+              {cart.length === 0 ? (
+                <div className="orders-empty">
+                  <div>
+                    <FiShoppingBag />
+                  </div>
+                  <h3>Заказ пока пустой</h3>
+                  <p>Добавь блюда из меню, и они появятся здесь.</p>
+                  <Link to="/menu">Открыть меню</Link>
+                </div>
+              ) : (
+                <div className="orders-items">
+                  {cart.map((item) => (
+                    <div className="orders-item" key={item.id}>
+                      <img src={item.image} alt={item.title} />
+
+                      <div className="orders-item-info">
+                        <h3>{item.title}</h3>
+                        <p>{item.restaurant || "ClickEat Restaurant"}</p>
+                        <strong>{item.price.toLocaleString("ru-RU")} сум</strong>
+                      </div>
+
+                      <div className="orders-qty">
+                        <button
+                          type="button"
+                          onClick={() => updateQuantity(item.id, "minus")}
+                        >
+                          <FiMinus />
+                        </button>
+                        <span>{item.quantity}</span>
+                        <button
+                          type="button"
+                          onClick={() => updateQuantity(item.id, "plus")}
+                        >
+                          <FiPlus />
+                        </button>
+                      </div>
+
+                      <button
+                        type="button"
+                        className="orders-remove"
+                        onClick={() => removeItem(item.id)}
+                      >
+                        <FiTrash2 />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
-            <div className="mt-8 rounded-[34px] bg-white p-6 shadow-[0_18px_45px_rgba(0,0,0,0.07)]">
-              <h2 className="text-3xl font-extrabold text-[#2f3542]">
-                Заказы
-              </h2>
+            <div className="orders-card">
+              <div className="orders-card-head">
+                <div>
+                  <h2>Клиент и доставка</h2>
+                  <p>Данные клиента заполняются автоматически из профиля.</p>
+                </div>
+              </div>
 
-              <div className="mt-6 grid gap-5">
-                {filteredOrders.map((order) => (
-                  <div
-                    key={order.id}
-                    className="rounded-[26px] border border-[#f0e3d7] bg-[#fffaf5] p-6"
-                  >
-                    <div className="flex items-start justify-between gap-5">
-                      <div>
-                        <h3 className="text-2xl font-extrabold text-[#2f3542]">
-                          Заказ #{order.id.slice(-6)}
-                        </h3>
+              <div className="orders-form-grid">
+                <Field
+                  label="Имя клиента"
+                  icon={<FiUser />}
+                  value={customerName}
+                  onChange={setCustomerName}
+                  placeholder=""
+                />
 
-                        <p className="mt-2 text-[#7b8698]">
-                          {order.customerName} • {order.customerPhone}
-                        </p>
+                <Field
+                  label="Телефон клиента"
+                  icon={<FiPhone />}
+                  value={customerPhone}
+                  onChange={setCustomerPhone}
+                  placeholder=""
+                />
+              </div>
 
-                        <p className="text-[#7b8698]">
-                          {cleanAddress(order.address)}
-                        </p>
+              <Field
+                label="Адрес доставки"
+                icon={<FiMapPin />}
+                value={address}
+                onChange={setAddress}
+                placeholder=""
+              />
 
-                        <p className="text-[#7b8698]">
-                          {order.restaurantName}
-                        </p>
-                      </div>
+              <div className="orders-map">
+                <iframe
+                  title="Карта доставки"
+                  src={`https://www.openstreetmap.org/export/embed.html?bbox=${
+                    coords.lng - 0.01
+                  }%2C${coords.lat - 0.01}%2C${coords.lng + 0.01}%2C${
+                    coords.lat + 0.01
+                  }&layer=mapnik&marker=${coords.lat}%2C${coords.lng}`}
+                />
 
-                      <span className="flex items-center gap-2 rounded-full bg-orange-100 px-5 py-2 font-bold text-[#ff6b00]">
-                        {statusIcons[order.status]}
-                        {statusLabels[order.status]}
-                      </span>
-                    </div>
-
-                    <div className="mt-5 rounded-[20px] bg-white p-4">
-                      {order.items.map((item, index) => (
-                        <div key={index} className="flex justify-between py-2">
-                          <span>
-                            {item.name} × {item.quantity}
-                          </span>
-                          <b>{formatSum(item.price)}</b>
-                        </div>
-                      ))}
-
-                      <div className="mt-3 border-t pt-3 text-right text-xl font-extrabold">
-                        Итого: {formatSum(order.totalPrice)}
-                      </div>
-                    </div>
-
-                    {order.comment && (
-                      <p className="mt-4 rounded-[18px] bg-orange-50 p-4 text-[#7b8698]">
-                        Комментарий: {order.comment}
-                      </p>
-                    )}
-
-                    <div className="mt-5 flex flex-wrap gap-3">
-                      {statuses.map((status) => (
-                        <button
-                          key={status}
-                          onClick={() => changeStatus(order.id, status)}
-                          className={`rounded-2xl px-4 py-3 font-bold ${
-                            order.status === status
-                              ? "bg-[#ff6b00] text-white"
-                              : "bg-white text-[#ff6b00]"
-                          }`}
-                        >
-                          {statusLabels[status]}
-                        </button>
-                      ))}
-
-                      <Link
-                        to={`/order-tracking/${order.id}`}
-                        className="rounded-2xl bg-[#2f3542] px-4 py-3 font-bold text-white"
-                      >
-                        Открыть tracking
-                      </Link>
-                    </div>
-
-                    <div className="mt-5 rounded-[22px] bg-white p-5">
-                      <div className="flex items-center justify-between gap-4">
-                        <div>
-                          <h4 className="flex items-center gap-2 text-xl font-extrabold text-[#2f3542]">
-                            <FiNavigation />
-                            Управление курьером
-                          </h4>
-
-                          <p className="mt-1 text-sm text-[#7b8698]">
-                            Нажимай стрелки — клиент увидит движение на карте.
-                          </p>
-                        </div>
-
-                        <div className="text-right text-sm text-[#7b8698]">
-                          <p>{order.courierName || "ClickEat Courier"}</p>
-                          <p>{order.courierPhone || "+998901112233"}</p>
-                        </div>
-                      </div>
-
-                      <div className="mt-5 grid w-[170px] grid-cols-3 gap-2">
-                        <div />
-
-                        <MoveButton
-                          label="↑"
-                          disabled={movingId === order.id}
-                          onClick={() => moveCourier(order, "up")}
-                        />
-
-                        <div />
-
-                        <MoveButton
-                          label="←"
-                          disabled={movingId === order.id}
-                          onClick={() => moveCourier(order, "left")}
-                        />
-
-                        <MoveButton
-                          label="•"
-                          disabled
-                          onClick={() => {}}
-                        />
-
-                        <MoveButton
-                          label="→"
-                          disabled={movingId === order.id}
-                          onClick={() => moveCourier(order, "right")}
-                        />
-
-                        <div />
-
-                        <MoveButton
-                          label="↓"
-                          disabled={movingId === order.id}
-                          onClick={() => moveCourier(order, "down")}
-                        />
-
-                        <div />
-                      </div>
-                    </div>
+                <div className="orders-map-info">
+                  <FiMapPin />
+                  <div>
+                    <strong>{address}</strong>
+                    <p>Адрес определён по текущей точке на карте.</p>
                   </div>
-                ))}
+                </div>
+              </div>
 
-                {filteredOrders.length === 0 && (
-                  <div className="rounded-[26px] bg-[#fff8f1] p-10 text-center font-bold text-[#7b8698]">
-                    Заказов пока нет
-                  </div>
-                )}
+              <div className="orders-comment">
+                <label>Комментарий к заказу</label>
+                <div>
+                  <FiMessageSquare />
+                  <textarea
+                    value={comment}
+                    onChange={(e) => setComment(e.target.value)}
+                    placeholder=""
+                  />
+                </div>
               </div>
             </div>
-          </>
-        )}
+          </div>
+
+          <aside className="orders-right">
+            <div className="orders-card orders-sticky">
+              <h2>Итог по заказу</h2>
+
+              <div className="orders-summary-list">
+                <SummaryRow
+                  label="Сумма блюд"
+                  value={`${subtotal.toLocaleString("ru-RU")} сум`}
+                />
+                <SummaryRow
+                  label="Доставка"
+                  value={`${deliveryPrice.toLocaleString("ru-RU")} сум`}
+                />
+                <SummaryRow
+                  label="Промокод"
+                  value={
+                    appliedPromo
+                      ? `-${discount.toLocaleString("ru-RU")} сум`
+                      : "Не выбран"
+                  }
+                />
+                <SummaryRow label="Время доставки" value={deliveryTime} />
+              </div>
+
+              <div className="orders-promo">
+                <h3>Промокод</h3>
+
+                <div className="orders-promo-box">
+                  <input
+                    value={promoCode}
+                    onChange={(e) => setPromoCode(e.target.value)}
+                    placeholder=""
+                  />
+
+                  <button type="button" onClick={handleApplyPromo}>
+                    Применить
+                  </button>
+                </div>
+
+                {appliedPromo && (
+                  <p className="orders-promo-success">
+                    Применён: {appliedPromo.code} · скидка{" "}
+                    {discount.toLocaleString("ru-RU")} сум
+                  </p>
+                )}
+
+                {promoError && <p className="orders-promo-error">{promoError}</p>}
+              </div>
+
+              <div className="orders-payment">
+                <h3>Способ оплаты</h3>
+
+                <PaymentButton
+                  active={paymentMethod === "cash"}
+                  icon={<FiDollarSign />}
+                  title="Наличными"
+                  onClick={() => setPaymentMethod("cash")}
+                />
+
+                <PaymentButton
+                  active={paymentMethod === "card"}
+                  icon={<FiCreditCard />}
+                  title="Картой курьеру"
+                  onClick={() => setPaymentMethod("card")}
+                />
+
+                <PaymentButton
+                  active={paymentMethod === "online"}
+                  icon={<FiGlobe />}
+                  title="Онлайн оплата"
+                  onClick={() => setPaymentMethod("online")}
+                />
+              </div>
+
+              <div className="orders-auto-info">
+                <InfoBox
+                  icon={<FiClock />}
+                  title="Время доставки"
+                  text={deliveryTime}
+                />
+                <InfoBox
+                  icon={<FiTruck />}
+                  title="Курьер"
+                  text="Назначается автоматически"
+                />
+                <InfoBox icon={<FiCheckCircle />} title="Адрес" text={address} />
+              </div>
+
+              <div className="orders-total">
+                <span>Итого</span>
+                <strong>{total.toLocaleString("ru-RU")} сум</strong>
+              </div>
+
+              <button
+                type="button"
+                className="orders-confirm-btn"
+                onClick={handleSubmitOrder}
+                disabled={submitLoading}
+              >
+                {submitLoading ? "Оформляем..." : "Оформить заказ"}
+              </button>
+            </div>
+          </aside>
+        </div>
       </div>
     </section>
   );
 }
 
-function StatusCard({
-  title,
+function Field({
+  label,
+  icon,
   value,
-  active,
-  onClick,
+  onChange,
+  placeholder,
 }: {
-  title: string;
-  value: number;
-  active: boolean;
-  onClick: () => void;
+  label: string;
+  icon: ReactNode;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
 }) {
   return (
-    <button
-      onClick={onClick}
-      className={`rounded-[30px] p-6 text-left shadow-[0_18px_45px_rgba(0,0,0,0.07)] ${
-        active ? "bg-[#ff6b00] text-white" : "bg-white text-[#2f3542]"
-      }`}
-    >
-      <div className="text-2xl">
-        <FiPackage />
+    <div className="orders-field">
+      <label>{label}</label>
+      <div>
+        <span>{icon}</span>
+        <input
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+        />
       </div>
-      <p className="mt-5 font-bold opacity-70">{title}</p>
-      <h3 className="mt-2 text-4xl font-extrabold">{value}</h3>
-    </button>
+    </div>
   );
 }
 
-function MoveButton({
-  label,
-  disabled,
+function SummaryRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="orders-summary-row">
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
+  );
+}
+
+function PaymentButton({
+  active,
+  icon,
+  title,
   onClick,
 }: {
-  label: string;
-  disabled?: boolean;
+  active: boolean;
+  icon: ReactNode;
+  title: string;
   onClick: () => void;
 }) {
   return (
     <button
       type="button"
-      disabled={disabled}
       onClick={onClick}
-      className="h-12 rounded-2xl bg-[#fff0e6] text-xl font-black text-[#ff6b00] transition hover:bg-[#ff6b00] hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+      className={`orders-payment-btn ${active ? "active" : ""}`}
     >
-      {label}
+      <span>{icon}</span>
+      <strong>{title}</strong>
     </button>
+  );
+}
+
+function InfoBox({
+  icon,
+  title,
+  text,
+}: {
+  icon: ReactNode;
+  title: string;
+  text: string;
+}) {
+  return (
+    <div className="orders-info-box">
+      <span>{icon}</span>
+      <div>
+        <strong>{title}</strong>
+        <p>{text}</p>
+      </div>
+    </div>
   );
 }
