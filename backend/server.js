@@ -23,6 +23,16 @@ app.use(
 );
 
 app.use(express.json({ limit: "10mb" }));
+app.get("/", (req, res) => {
+  res.send("ClickEat backend is running");
+});
+
+app.get("/api/health", (req, res) => {
+  res.json({
+    success: true,
+    message: "ClickEat backend is working",
+  });
+});
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 app.get("/api/health", (req, res) => {
@@ -77,13 +87,4 @@ mongoose
     process.exit(1);
   });
 
-app.get("/", (req, res) => {
-  res.send("ClickEat backend is running");
-});
 
-app.get("/api/health", (req, res) => {
-  res.json({
-    success: true,
-    message: "ClickEat backend is working",
-  });
-});
