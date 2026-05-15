@@ -35,12 +35,7 @@ app.get("/api/health", (req, res) => {
 });
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
-app.get("/api/health", (req, res) => {
-  res.json({
-    success: true,
-    message: "ClickEat backend is working",
-  });
-});
+
 
 app.use("/api/auth", authRoutes);
 app.use("/api/admin", adminRoutes);
