@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { Helmet } from "react-helmet";
-import { useAuth, type User } from "../../stores/auth.store";
+import { useAuth } from "../../stores/auth.store";
 import { api } from "../../lib/api";
 import { saveAuth } from "../../lib/auth";
 import AuthBg from "../../assets/auth-bg.png";
@@ -10,6 +10,9 @@ export const LoginPage = () => {
   const navigate = useNavigate();
   const handleLogin = useAuth((state) => state.handleLogin);
 
+  const emailRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
+
   const [form, setForm] = useState({
     email: "",
     password: "",
@@ -17,6 +20,30 @@ export const LoginPage = () => {
 
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const focusNext = (
+    event: React.KeyboardEvent<HTMLInputElement>,
+    currentValue: string,
+    next?: React.RefObject<HTMLInputElement | null>
+  ) => {
+    if (event.key !== "Enter") return;
+
+    event.preventDefault();
+
+    if (!currentValue.trim()) {
+      setError("Сначала заполни это поле");
+      return;
+    }
+
+    setError("");
+
+    if (next?.current) {
+      next.current.focus();
+      return;
+    }
+
+    void handleSubmit();
+  };
 
   const handleChange =
     (field: keyof typeof form) =>
@@ -27,15 +54,21 @@ export const LoginPage = () => {
       }));
     };
 
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
+  const handleSubmit = async () => {
     setError("");
 
     const email = form.email.trim().toLowerCase();
     const password = form.password.trim();
 
-    if (!email || !password) {
-      setError("Заполни email и пароль");
+    if (!email) {
+      setError("Введите email");
+      emailRef.current?.focus();
+      return;
+    }
+
+    if (!password) {
+      setError("Введите пароль");
+      passwordRef.current?.focus();
       return;
     }
 
@@ -51,17 +84,7 @@ export const LoginPage = () => {
       const token = response.data.token;
 
       saveAuth(token, backendUser);
-
-      const appUser: User = {
-        name: backendUser.name,
-        email: backendUser.email,
-        phone: backendUser.phone || "",
-        password: "",
-        avatar: backendUser.avatar || "",
-        role: backendUser.role || "client",
-      };
-
-      handleLogin(appUser);
+      handleLogin(backendUser, token);
 
       if (backendUser.role === "admin") {
         navigate("/admin");
@@ -72,12 +95,7 @@ export const LoginPage = () => {
       }
     } catch (err: any) {
       const message = err?.response?.data?.message;
-
-      if (message) {
-        setError(message);
-      } else {
-        setError("Ошибка входа. Проверь backend и попробуй снова");
-      }
+      setError(message || "Неверный email или пароль");
     } finally {
       setLoading(false);
     }
@@ -94,36 +112,48 @@ export const LoginPage = () => {
         style={{ backgroundImage: `url(${AuthBg})` }}
       >
         <div className="absolute inset-0 bg-[rgba(30,20,10,0.28)] backdrop-blur-[4px]" />
-        <div className="absolute inset-y-0 right-0 w-[55%] bg-[radial-gradient(circle_at_center,rgba(255,125,0,0.92)_0%,rgba(255,110,0,0.86)_35%,rgba(255,110,0,0.68)_58%,rgba(255,110,0,0.20)_85%,transparent_100%)]" />
+        <div className="absolute inset-y-0 right-0 hidden w-[55%] bg-[radial-gradient(circle_at_center,rgba(255,125,0,0.92)_0%,rgba(255,110,0,0.86)_35%,rgba(255,110,0,0.68)_58%,rgba(255,110,0,0.20)_85%,transparent_100%)] lg:block" />
 
-        <div className="relative z-10 mx-auto flex min-h-screen max-w-[1400px] items-center justify-between gap-8 px-8 py-10">
-          <div className="w-full max-w-[500px] rounded-[34px] bg-[#f5e4da] p-10 shadow-[0_18px_50px_rgba(0,0,0,0.14)]">
+        <div className="relative z-10 mx-auto flex min-h-screen max-w-[1400px] items-center justify-center gap-8 px-4 py-6 sm:px-8 lg:justify-between lg:py-10">
+          <div className="w-full max-w-[500px] rounded-[28px] bg-[#f5e4da]/95 p-6 shadow-[0_18px_50px_rgba(0,0,0,0.14)] sm:rounded-[34px] sm:p-10">
             <div className="inline-flex rounded-full bg-[#ffe8d7] px-4 py-2 text-[14px] font-semibold text-[#ff6b00]">
               Welcome Back
             </div>
 
-            <h1 className="mt-8 text-[62px] font-extrabold leading-none text-[#2f3542]">
+            <h1 className="mt-7 text-[46px] font-extrabold leading-none text-[#2f3542] sm:text-[62px]">
               Вход
             </h1>
 
-            <p className="mt-5 text-[18px] leading-8 text-[#71809a]">
+            <p className="mt-5 text-[17px] leading-8 text-[#71809a] sm:text-[18px]">
               Войди в аккаунт и продолжай заказывать еду 🍕
             </p>
 
-            <form onSubmit={handleSubmit} className="mt-8 space-y-4">
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                void handleSubmit();
+              }}
+              className="mt-8 space-y-4"
+            >
               <Input
+                ref={emailRef}
                 type="email"
                 placeholder="Email"
                 value={form.email}
                 onChange={handleChange("email")}
+                onKeyDown={(event) =>
+                  focusNext(event, form.email, passwordRef)
+                }
                 autoComplete="email"
               />
 
               <Input
+                ref={passwordRef}
                 type="password"
                 placeholder="Пароль"
                 value={form.password}
                 onChange={handleChange("password")}
+                onKeyDown={(event) => focusNext(event, form.password)}
                 autoComplete="current-password"
               />
 
@@ -161,7 +191,8 @@ export const LoginPage = () => {
               </h2>
 
               <p className="mt-8 text-[24px] leading-10 text-white/92">
-                Быстрый доступ к заказам, любимым блюдам и персональным предложениям
+                Быстрый доступ к заказам, любимым блюдам и персональным
+                предложениям
               </p>
             </div>
           </div>
@@ -171,27 +202,27 @@ export const LoginPage = () => {
   );
 };
 
-function Input({
+const Input = ({
   placeholder,
   value,
   onChange,
+  onKeyDown,
   type = "text",
   autoComplete,
-}: {
-  placeholder: string;
-  value: string;
-  onChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
-  type?: string;
-  autoComplete?: string;
-}) {
+  ref,
+}: React.InputHTMLAttributes<HTMLInputElement> & {
+  ref?: React.Ref<HTMLInputElement>;
+}) => {
   return (
     <input
+      ref={ref}
       type={type}
       value={value}
       onChange={onChange}
+      onKeyDown={onKeyDown}
       placeholder={placeholder}
       autoComplete={autoComplete}
       className="auth-input w-full rounded-[18px] border border-transparent bg-[#dfe8f6] px-5 py-4 text-[17px] text-[#2f3542] outline-none transition focus:border-[#ffb37a] focus:bg-white"
     />
   );
-}
+};
