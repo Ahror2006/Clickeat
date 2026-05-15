@@ -13,11 +13,11 @@ import { initSocket } from "./socket.js";
 dotenv.config();
 
 const app = express();
-console.log("CLICK_EAT_SERVER_VERSION_HEALTH_TEST_1");
 
 const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:5174",
+  "https://clickeat-frontend-j4id.onrender.com",
   process.env.CLIENT_URL,
 ].filter(Boolean);
 
@@ -30,10 +30,7 @@ app.use(
 
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
-app.use((req, res, next) => {
-  console.log("REQUEST:", req.method, req.originalUrl);
-  next();
-});
+
 app.get("/", (req, res) => {
   res.status(200).send("ClickEat backend is running");
 });

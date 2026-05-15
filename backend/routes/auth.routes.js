@@ -50,9 +50,9 @@ router.post("/register", async (req, res) => {
       });
     }
 
-    const existingUser = await User.findOne({
-      email: email.toLowerCase().trim(),
-    });
+    const normalizedEmail = email.toLowerCase().trim();
+
+    const existingUser = await User.findOne({ email: normalizedEmail });
 
     if (existingUser) {
       return res.status(409).json({
@@ -65,9 +65,10 @@ router.post("/register", async (req, res) => {
 
     const user = await User.create({
       name: name.trim(),
-      email: email.toLowerCase().trim(),
+      email: normalizedEmail,
       phone: phone || "",
       password: hashedPassword,
+      avatar: "",
       role: "client",
     });
 
@@ -99,9 +100,11 @@ router.post("/login", async (req, res) => {
       });
     }
 
-    const user = await User.findOne({
-      email: email.toLowerCase().trim(),
-    }).select("+password");
+    const normalizedEmail = email.toLowerCase().trim();
+
+    const user = await User.findOne({ email: normalizedEmail }).select(
+      "+password"
+    );
 
     if (!user) {
       return res.status(401).json({
@@ -154,32 +157,17 @@ router.patch("/me", protect, async (req, res) => {
   try {
     const { name, phone, avatar } = req.body;
 
-    if (name !== undefined) req.user.name = name.trim();
-    if (phone !== undefined) req.user.phone = phone.trim();
-    if (avatar !== undefined) req.user.avatar = avatar;
+    if (name !== undefined) {
+      req.user.name = name.trim();
+    }
 
-    await req.user.save();
+    if (phone !== undefined) {
+      req.user.phone = phone.trim();
+    }
 
-    res.json({
-      success: true,
-      message: "Профиль обновлён",
-      user: publicUser(req.user),
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Ошибка обновления профиля",
-    });
-  }
-});
-
-router.patch("/me", protect, async (req, res) => {
-  try {
-    const { name, phone, avatar } = req.body;
-
-    if (name !== undefined) req.user.name = name.trim();
-    if (phone !== undefined) req.user.phone = phone.trim();
-    if (avatar !== undefined) req.user.avatar = avatar;
+    if (avatar !== undefined) {
+      req.user.avatar = avatar;
+    }
 
     await req.user.save();
 
@@ -192,8 +180,9 @@ router.patch("/me", protect, async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Ошибка обновления профиля",
+      error: error.message,
     });
   }
 });
-export default router;
 
+export default router;

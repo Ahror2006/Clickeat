@@ -40,12 +40,22 @@ export function emitOrderStatusUpdated(order) {
   if (!ioInstance) return;
 
   ioInstance.emit("order:status-updated", order);
-  ioInstance.to(`order:${order.id}`).emit("order:status-updated", order);
+
+  const orderId = order._id || order.id;
+
+  if (orderId) {
+    ioInstance.to(`order:${orderId}`).emit("order:status-updated", order);
+  }
 }
 
 export function emitCourierLocationUpdated(order) {
   if (!ioInstance) return;
 
   ioInstance.emit("courier:location-updated", order);
-  ioInstance.to(`order:${order.id}`).emit("courier:location-updated", order);
+
+  const orderId = order._id || order.id;
+
+  if (orderId) {
+    ioInstance.to(`order:${orderId}`).emit("courier:location-updated", order);
+  }
 }
