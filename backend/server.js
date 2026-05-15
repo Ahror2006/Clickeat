@@ -76,3 +76,14 @@ mongoose
     console.error("MongoDB connection error:", error.message);
     process.exit(1);
   });
+
+app.get("/", (req, res) => {
+  res.send("ClickEat backend is running");
+});
+
+app.get("/api/health", (req, res) => {
+  res.json({
+    success: true,
+    message: "ClickEat backend is working",
+  });
+});
