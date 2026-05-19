@@ -1,0 +1,10 @@
+html.dark-theme body,
+html.dark-theme .app-shell {
+  background: #050505;
+  color: #ffffff;
+}
+
+html.dark-theme .card {
+  background: #111111;
+  border-color: rgba(255, 107, 0, 0.16);
+}

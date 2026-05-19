@@ -5,11 +5,11 @@ import { FeaturedMenu } from "./featured-menu";
 
 export const HomePage = () => {
   return (
-    <div className="home-page">
+    <main className="home-page min-w-[360px] overflow-x-hidden">
       <HeroSlider />
       <HomeCategories />
       <FeaturedRestaurants />
       <FeaturedMenu />
-    </div>
+    </main>
   );
 };

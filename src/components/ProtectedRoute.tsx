@@ -1,15 +1,11 @@
 import { Navigate, Outlet } from "react-router";
 import { useAuth } from "../stores/auth.store";
 
-export function EmployeeRoute() {
-  const { user, isAuthenticated } = useAuth();
+export function ProtectedRoute() {
+  const { isAuthenticated } = useAuth();
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
-  }
-
-  if (user.role !== "employee" && user.role !== "admin") {
-    return <Navigate to="/profile" replace />;
   }
 
   return <Outlet />;

@@ -45,39 +45,38 @@ export const HeroSlider = () => {
   };
 
   return (
-    <section className="pt-[26px] pb-[38px]">
+    <section className="home-hero-section pt-[105px] pb-6 sm:pt-[125px] sm:pb-10">
       <Container>
-        <div className="relative h-[360px] overflow-hidden rounded-[32px] bg-[#fff3e0] shadow-[0_18px_45px_rgba(0,0,0,0.10)]">
+        <div className="relative h-[210px] overflow-hidden rounded-[24px] bg-[#fff3e0] shadow-[0_14px_35px_rgba(0,0,0,0.12)] sm:h-[320px] sm:rounded-[32px] lg:h-[360px]">
           {banners.map((banner, index) => (
             <img
               key={banner.id}
               src={banner.image}
               alt={banner.alt}
-              className={`absolute inset-0 h-full w-full object-cover object-center transition-all duration-700 ease-in-out ${
-                active === index
-                  ? "z-[2] opacity-100 scale-100"
-                  : "z-[1] opacity-0 scale-[1.02]"
-              }`}
+              className={`absolute inset-0 h-full w-full object-cover object-center transition-all duration-700 ${active === index
+                  ? "z-[2] scale-100 opacity-100"
+                  : "z-[1] scale-[1.02] opacity-0"
+                }`}
             />
           ))}
 
           <button
             type="button"
             onClick={prevSlide}
-            className="absolute left-5 top-1/2 z-10 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-[#2f3542] shadow-md transition hover:scale-105 hover:text-[#ff6b00]"
+            className="absolute left-3 top-1/2 z-10 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-[#2f3542] shadow-md transition hover:text-[#ff6b00] sm:flex"
           >
-            <FiChevronLeft className="text-[25px]" />
+            <FiChevronLeft className="text-[22px]" />
           </button>
 
           <button
             type="button"
             onClick={nextSlide}
-            className="absolute right-5 top-1/2 z-10 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-[#2f3542] shadow-md transition hover:scale-105 hover:text-[#ff6b00]"
+            className="absolute right-3 top-1/2 z-10 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-[#2f3542] shadow-md transition hover:text-[#ff6b00] sm:flex"
           >
-            <FiChevronRight className="text-[25px]" />
+            <FiChevronRight className="text-[22px]" />
           </button>
 
-          <div className="absolute bottom-5 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 rounded-full bg-white/85 px-4 py-2 backdrop-blur-sm">
+          <div className="absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 rounded-full bg-white/85 px-3 py-2 backdrop-blur-sm">
             {banners.map((banner, index) => (
               <button
                 key={banner.id}
@@ -86,9 +85,8 @@ export const HeroSlider = () => {
                   setActive(index);
                   restartTimer();
                 }}
-                className={`h-2.5 rounded-full transition-all ${
-                  active === index ? "w-8 bg-[#ff6b00]" : "w-2.5 bg-[#d8d8d8]"
-                }`}
+                className={`h-2 rounded-full transition-all ${active === index ? "w-7 bg-[#ff6b00]" : "w-2 bg-[#d8d8d8]"
+                  }`}
               />
             ))}
           </div>

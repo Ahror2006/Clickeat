@@ -1,0 +1,20 @@
+.profile-page,
+.edit-profile-page {
+  background: #050505;
+  color: #ffffff;
+}
+
+.profile-grid,
+.edit-profile-content {
+  display: grid;
+  grid-template-columns: 360px 1fr;
+  gap: 24px;
+}
+
+.profile-card,
+.edit-profile-avatar-card,
+.edit-profile-form-card {
+  border-radius: 30px;
+  background: #111111;
+  border: 1px solid rgba(255, 107, 0, 0.16);
+}

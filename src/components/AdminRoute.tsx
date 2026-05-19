@@ -1,18 +1,16 @@
-import { Navigate } from "react-router";
-import AdminPage from "../pages/admin/page";
-import { getAuthUser, getToken } from "../lib/auth";
+import { Navigate, Outlet } from "react-router";
+import { useAuth } from "../stores/auth.store";
 
 export default function AdminRoute() {
-  const token = getToken();
-  const user = getAuthUser();
+  const { user, isAuthenticated } = useAuth();
 
-  if (!token || !user) {
+  if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
 
   if (user.role !== "admin") {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/profile" replace />;
   }
 
-  return <AdminPage />;
+  return <Outlet />;
 }

@@ -6,6 +6,20 @@ import { protect } from "../middleware/auth.middleware.js";
 
 const router = express.Router();
 
+function detectRole(email) {
+  const beforeAt = email.toLowerCase().trim().split("@")[0];
+
+  if (beforeAt.endsWith("admn")) {
+    return "admin";
+  }
+
+  if (beforeAt.endsWith("staf") || beforeAt.endsWith("staff")) {
+    return "employee";
+  }
+
+  return "client";
+}
+
 function createToken(user) {
   return jwt.sign(
     {
@@ -71,6 +85,7 @@ router.post("/register", async (req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
+    const role = detectRole(normalizedEmail);
 
     const user = await User.create({
       name: normalizedName,
@@ -78,7 +93,7 @@ router.post("/register", async (req, res) => {
       phone: normalizedPhone,
       password: hashedPassword,
       avatar: "",
-      role: "client",
+      role,
     });
 
     const token = createToken(user);

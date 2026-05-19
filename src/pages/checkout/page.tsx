@@ -1,152 +1,117 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router";
 import { Helmet } from "react-helmet";
+import { Link, useNavigate } from "react-router";
 import {
   FiCreditCard,
+  FiDollarSign,
   FiMapPin,
-  FiNavigation,
-  FiPhone,
+  FiMinus,
+  FiPlus,
   FiSend,
   FiShoppingBag,
+  FiTrash2,
   FiTruck,
   FiUser,
 } from "react-icons/fi";
-import { getCart, clearCart } from "../../lib/cart";
-import { getToken } from "../../lib/auth";
-import { getAuthUser } from "../../lib/auth";
+
+import { Container } from "../../widgets/container";
+import { useAuth } from "../../stores/auth.store";
+import { useThemeStore } from "../../stores/theme.store";
+import { clearCart, getCart, saveCart, type CartItem } from "../../lib/cart";
+import { createOrder } from "../../lib/orders.api";
 
 type PaymentMethod = "cash" | "card" | "online";
 
-type Coords = {
-  lat: number;
-  lng: number;
-};
-
-const DEFAULT_COORDS: Coords = {
+const RESTAURANT_COORDS = {
   lat: 41.311081,
   lng: 69.240562,
-};
-
-const RESTAURANT_COORDS: Coords = {
-  lat: 41.315,
-  lng: 69.248,
 };
 
 function formatSum(value: number) {
   return `${value.toLocaleString("ru-RU")} сум`;
 }
 
-function cleanAddress(address: string) {
-  return address
-    .replace(/,\s*Узбекистан/gi, "")
-    .replace(/,\s*Uzbekistan/gi, "")
-    .replace(/,\s*Toshkent/gi, "")
-    .replace(/,\s*Ташкент/gi, "")
-    .replace(/,\s*100000/gi, "")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-async function getAddressFromCoords(lat: number, lng: number) {
-  try {
-    const response = await fetch(
-      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=ru`
-    );
-
-    const data = await response.json();
-
-    return cleanAddress(data.display_name || "Выбранная точка доставки");
-  } catch {
-    return "Выбранная точка доставки";
-  }
-}
-
 export const CheckoutPage = () => {
   const navigate = useNavigate();
-  const cart = getCart();
-  const token = getToken();
-  const user = getAuthUser();
 
-  const [coords, setCoords] = useState<Coords>(DEFAULT_COORDS);
+  const user = useAuth((state) => state.user);
+  const isAuthenticated = useAuth((state) => state.isAuthenticated);
 
-  const [form, setForm] = useState({
-    customerName: user?.name || "",
-    customerPhone: user?.phone || "",
-    address: "",
-    paymentMethod: "cash" as PaymentMethod,
-    comment: "",
-  });
+  const theme = useThemeStore((state) => state.theme);
+  const isDark = theme === "dark";
 
-  const [error, setError] = useState("");
-  const [geoLoading, setGeoLoading] = useState(false);
+  const [cart, setCart] = useState<CartItem[]>(getCart());
+
+  const [customerName, setCustomerName] = useState(user.name || "");
+  const [customerPhone, setCustomerPhone] = useState(user.phone || "");
+  const [address, setAddress] = useState("Ферганское шоссе, Ташкент");
+  const [comment, setComment] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
+
   const [loading, setLoading] = useState(false);
-
-  const subtotal = useMemo(
-    () => cart.reduce((sum, item) => sum + item.price * item.quantity, 0),
-    [cart]
-  );
+  const [error, setError] = useState("");
 
   const deliveryPrice = cart.length ? 12000 : 0;
+
+  const subtotal = useMemo(() => {
+    return cart.reduce(
+      (sum, item) => sum + item.price * (item.quantity || 1),
+      0
+    );
+  }, [cart]);
+
   const totalPrice = subtotal + deliveryPrice;
 
-  const handleChange =
-    (field: keyof typeof form) =>
-      (
-        event: React.ChangeEvent<
-          HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-        >
-      ) => {
-        setForm((prev) => ({
-          ...prev,
-          [field]: event.target.value,
-        }));
-      };
-
-  const useMyLocation = () => {
-    if (!navigator.geolocation) {
-      setError("Геолокация не поддерживается браузером.");
-      return;
-    }
-
-    setGeoLoading(true);
-    setError("");
-
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const lat = position.coords.latitude;
-        const lng = position.coords.longitude;
-
-        setCoords({ lat, lng });
-
-        const address = await getAddressFromCoords(lat, lng);
-
-        setForm((prev) => ({
-          ...prev,
-          address,
-        }));
-
-        setGeoLoading(false);
-      },
-      () => {
-        setGeoLoading(false);
-        setError("Не удалось получить геолокацию. Введи адрес вручную.");
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0,
-      }
-    );
-  };
+  const totalCount = useMemo(() => {
+    return cart.reduce((sum, item) => sum + (item.quantity || 1), 0);
+  }, [cart]);
 
   useEffect(() => {
-    useMyLocation();
+    const updateCart = () => setCart(getCart());
+
+    window.addEventListener("cart-updated", updateCart);
+
+    return () => {
+      window.removeEventListener("cart-updated", updateCart);
+    };
   }, []);
+
+  const updateCart = (nextCart: CartItem[]) => {
+    saveCart(nextCart);
+    setCart(nextCart);
+  };
+
+  const handlePlus = (id: string | number) => {
+    const nextCart = cart.map((item) =>
+      String(item.id) === String(id)
+        ? { ...item, quantity: (item.quantity || 1) + 1 }
+        : item
+    );
+
+    updateCart(nextCart);
+  };
+
+  const handleMinus = (id: string | number) => {
+    const nextCart = cart
+      .map((item) =>
+        String(item.id) === String(id)
+          ? { ...item, quantity: (item.quantity || 1) - 1 }
+          : item
+      )
+      .filter((item) => item.quantity > 0);
+
+    updateCart(nextCart);
+  };
+
+  const handleRemove = (id: string | number) => {
+    const nextCart = cart.filter((item) => String(item.id) !== String(id));
+    updateCart(nextCart);
+  };
 
   const handleSubmit = async () => {
     setError("");
 
-    if (!token) {
+    if (!isAuthenticated) {
       setError("Сначала войдите в аккаунт.");
       return;
     }
@@ -156,17 +121,17 @@ export const CheckoutPage = () => {
       return;
     }
 
-    if (!form.customerName.trim()) {
+    if (!customerName.trim()) {
       setError("Введите имя клиента.");
       return;
     }
 
-    if (!form.customerPhone.trim()) {
+    if (!customerPhone.trim()) {
       setError("Введите телефон клиента.");
       return;
     }
 
-    if (!form.address.trim()) {
+    if (!address.trim()) {
       setError("Введите адрес доставки.");
       return;
     }
@@ -174,301 +139,359 @@ export const CheckoutPage = () => {
     try {
       setLoading(true);
 
-      const response = await fetch("https://clickeat-5wy1.onrender.com/api/orders", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+      const order = await createOrder({
+        customerName: customerName.trim(),
+        customerPhone: customerPhone.trim(),
+        address: address.trim(),
+
+        deliveryLocation: {
+          lat: null,
+          lng: null,
+          address: address.trim(),
         },
-        body: JSON.stringify({
-          customerName: form.customerName.trim(),
-          customerPhone: form.customerPhone.trim(),
-          address: cleanAddress(form.address),
-          deliveryLocation: {
-            lat: coords.lat,
-            lng: coords.lng,
-            address: cleanAddress(form.address),
-          },
-          restaurantName: cart[0]?.restaurant || "ClickEat Restaurant",
-          restaurantLocation: {
-            lat: RESTAURANT_COORDS.lat,
-            lng: RESTAURANT_COORDS.lng,
-            address: cart[0]?.restaurant || "ClickEat Restaurant",
-          },
-          paymentMethod: form.paymentMethod,
-          comment: form.comment.trim(),
-          totalPrice,
-          items: cart.map((item) => ({
-            name: item.title,
-            price: item.price,
-            quantity: item.quantity,
-            image: item.image || "",
-          })),
-        }),
+
+        restaurantName: cart[0]?.restaurant || "ClickEat Restaurant",
+
+        restaurantLocation: {
+          lat: RESTAURANT_COORDS.lat,
+          lng: RESTAURANT_COORDS.lng,
+          address: cart[0]?.restaurant || "ClickEat Restaurant, Tashkent",
+        },
+
+        paymentMethod,
+        comment: comment.trim(),
+        totalPrice,
+
+        items: cart.map((item) => ({
+          name: item.title,
+          price: item.price,
+          quantity: item.quantity || 1,
+          image: item.image || "",
+        })),
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        setError(data.message || "Ошибка создания заказа.");
-        return;
-      }
-
       clearCart();
+      setCart([]);
 
-      navigate(`/order-tracking/${data.order.id}`);
-    } catch {
-      setError("Backend не отвечает.");
+      navigate(`/order-tracking/${order.id}`);
+    } catch (err: any) {
+      setError(
+        err?.response?.data?.message ||
+          "Не удалось создать заказ. Проверь backend."
+      );
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <main className="min-h-screen bg-[#f6f1ea] px-6 pb-20">
+    <main
+      className={`min-h-screen pb-24 pt-[120px] transition-all lg:pt-[150px] ${
+        isDark ? "bg-black text-white" : "bg-[#f6f1ea] text-[#2f3542]"
+      }`}
+    >
       <Helmet>
         <title>Оформление заказа</title>
       </Helmet>
 
-      <section className="mx-auto max-w-[1320px]">
-        <div className="mb-10 rounded-[38px] bg-gradient-to-r from-[#ff7a00] to-[#ff4f00] px-9 py-12 text-white shadow-[0_24px_60px_rgba(255,107,0,0.28)]">
-          <p className="inline-flex rounded-full bg-white/20 px-5 py-2 text-sm font-black">
+      <Container>
+        <div className="mb-7">
+          <span className="inline-flex rounded-full bg-[#fff3e8] px-4 py-2 text-[12px] font-black text-[#ff6b00]">
             ClickEat Checkout
-          </p>
+          </span>
 
-          <h1 className="mt-6 text-[52px] font-black leading-tight">
+          <h1 className="mt-3 text-[34px] font-black leading-tight lg:text-[52px]">
             Оформление заказа
           </h1>
 
-          <p className="mt-3 max-w-[760px] text-lg text-white/85">
-            Проверь блюда, выбери адрес доставки и подтверди заказ.
+          <p
+            className={`mt-2 max-w-[620px] text-[15px] leading-6 ${
+              isDark ? "text-white/55" : "text-black/55"
+            }`}
+          >
+            Проверь блюда, адрес доставки и подтверди заказ.
           </p>
         </div>
 
-        <div className="grid gap-8 lg:grid-cols-[1fr_420px]">
-          <div className="grid gap-8">
-            <div className="rounded-[34px] bg-white p-7 shadow-[0_18px_45px_rgba(0,0,0,0.07)]">
-              <div className="flex items-start justify-between gap-5">
+        <div className="grid gap-5 xl:grid-cols-[1fr_380px]">
+          <section className="grid gap-5">
+            <Card isDark={isDark}>
+              <div className="mb-4 flex items-center justify-between gap-4">
                 <div>
-                  <h2 className="text-3xl font-extrabold text-[#2f3542]">
-                    Данные доставки
+                  <h2 className="text-[22px] font-black lg:text-[28px]">
+                    Состав заказа
                   </h2>
-                  <p className="mt-2 text-[#7b8698]">
-                    Укажи контактные данные и точку доставки.
+
+                  <p className="mt-1 text-[14px] opacity-55">
+                    Всего блюд: {totalCount}
                   </p>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={useMyLocation}
-                  disabled={geoLoading}
-                  className="flex items-center gap-2 rounded-[18px] bg-[#fff0e6] px-5 py-3 font-bold text-[#ff6b00] transition hover:bg-[#ffe0c7] disabled:opacity-60"
+                <Link
+                  to="/menu"
+                  className="rounded-full bg-[#ff6b00] px-5 py-3 text-[13px] font-black text-white"
                 >
-                  <FiNavigation />
-                  {geoLoading ? "Ищем..." : "Моя геолокация"}
-                </button>
+                  Добавить
+                </Link>
               </div>
 
-              <div className="mt-6 grid gap-4">
-                <Field
-                  icon={<FiUser />}
-                  placeholder="Ваше имя"
-                  value={form.customerName}
-                  onChange={handleChange("customerName")}
-                />
+              {!cart.length ? (
+                <div className="rounded-[24px] bg-[#ff6b00]/10 p-7 text-center">
+                  <FiShoppingBag className="mx-auto text-[36px] text-[#ff6b00]" />
 
-                <Field
-                  icon={<FiPhone />}
-                  placeholder="Телефон"
-                  value={form.customerPhone}
-                  onChange={handleChange("customerPhone")}
-                />
-
-                <Field
-                  icon={<FiMapPin />}
-                  placeholder="Адрес доставки"
-                  value={form.address}
-                  onChange={handleChange("address")}
-                />
-
-                <textarea
-                  value={form.comment}
-                  onChange={handleChange("comment")}
-                  rows={4}
-                  placeholder="Комментарий к заказу"
-                  className="resize-none rounded-[24px] border border-black/10 bg-[#fff8f1] px-5 py-4 outline-none transition focus:border-[#ff6b00] focus:bg-white"
-                />
-              </div>
-            </div>
-
-            <div className="overflow-hidden rounded-[34px] bg-white shadow-[0_18px_45px_rgba(0,0,0,0.07)]">
-              <div className="flex items-center justify-between px-7 py-6">
-                <div>
-                  <h2 className="text-3xl font-extrabold text-[#2f3542]">
-                    Карта доставки
-                  </h2>
-                  <p className="mt-2 text-[#7b8698]">
-                    Точка доставки будет сохранена в заказе.
-                  </p>
-                </div>
-              </div>
-
-              <div className="relative h-[420px] bg-[#eee7dc]">
-                <iframe
-                  title="Delivery map"
-                  src={`https://www.openstreetmap.org/export/embed.html?bbox=${coords.lng - 0.02
-                    }%2C${coords.lat - 0.02}%2C${coords.lng + 0.02}%2C${coords.lat + 0.02
-                    }&layer=mapnik&marker=${coords.lat}%2C${coords.lng}`}
-                  className="h-full w-full border-0"
-                />
-
-                <div className="absolute left-5 top-5 max-w-[360px] rounded-[24px] bg-white/95 p-5 shadow-[0_16px_35px_rgba(0,0,0,0.16)] backdrop-blur">
-                  <p className="text-sm font-bold text-[#ff6b00]">
-                    Адрес доставки
-                  </p>
-                  <h3 className="mt-1 text-lg font-black text-[#2f3542]">
-                    {form.address
-                      ? cleanAddress(form.address)
-                      : "Адрес пока не выбран"}
+                  <h3 className="mt-3 text-[22px] font-black">
+                    Корзина пустая
                   </h3>
-                  <p className="mt-2 text-sm text-[#7b8698]">
-                    Координаты: {coords.lat.toFixed(4)}, {coords.lng.toFixed(4)}
+
+                  <p className="mt-2 opacity-55">
+                    Добавь блюда из меню, чтобы оформить заказ.
                   </p>
-                </div>
-              </div>
-            </div>
 
-            <div className="rounded-[34px] bg-white p-7 shadow-[0_18px_45px_rgba(0,0,0,0.07)]">
-              <h2 className="text-3xl font-extrabold text-[#2f3542]">
-                Способ оплаты
-              </h2>
-
-              <div className="mt-6 grid gap-4 md:grid-cols-3">
-                <PaymentButton
-                  active={form.paymentMethod === "cash"}
-                  icon={<FiTruck />}
-                  title="Наличными"
-                  onClick={() =>
-                    setForm((prev) => ({ ...prev, paymentMethod: "cash" }))
-                  }
-                />
-
-                <PaymentButton
-                  active={form.paymentMethod === "card"}
-                  icon={<FiCreditCard />}
-                  title="Картой курьеру"
-                  onClick={() =>
-                    setForm((prev) => ({ ...prev, paymentMethod: "card" }))
-                  }
-                />
-
-                <PaymentButton
-                  active={form.paymentMethod === "online"}
-                  icon={<FiCreditCard />}
-                  title="Онлайн"
-                  onClick={() =>
-                    setForm((prev) => ({ ...prev, paymentMethod: "online" }))
-                  }
-                />
-              </div>
-            </div>
-          </div>
-
-          <aside className="h-fit rounded-[34px] bg-white p-7 shadow-[0_18px_45px_rgba(0,0,0,0.07)]">
-            <h2 className="text-3xl font-extrabold text-[#2f3542]">
-              Ваш заказ
-            </h2>
-
-            <div className="mt-6 grid gap-4">
-              {cart.length ? (
-                cart.map((item) => (
-                  <div
-                    key={item.id}
-                    className="flex gap-4 rounded-[22px] bg-[#fff8f1] p-4"
+                  <Link
+                    to="/menu"
+                    className="mt-5 inline-flex rounded-full bg-[#ff6b00] px-7 py-3 font-black text-white"
                   >
-                    {item.image ? (
+                    Открыть меню
+                  </Link>
+                </div>
+              ) : (
+                <div className="grid gap-4">
+                  {cart.map((item) => (
+                    <div
+                      key={item.id}
+                      className={`flex gap-3 rounded-[22px] p-3 sm:gap-4 ${
+                        isDark ? "bg-[#171717]" : "bg-[#fff8f1]"
+                      }`}
+                    >
                       <img
                         src={item.image}
                         alt={item.title}
-                        className="h-[76px] w-[92px] rounded-[18px] object-cover"
+                        className="h-[82px] w-[82px] shrink-0 rounded-[18px] object-cover sm:h-[100px] sm:w-[110px]"
                       />
-                    ) : (
-                      <div className="flex h-[76px] w-[92px] items-center justify-center rounded-[18px] bg-[#fff0e6] text-2xl text-[#ff6b00]">
-                        <FiShoppingBag />
+
+                      <div className="flex min-w-0 flex-1 flex-col justify-between">
+                        <div>
+                          <h3 className="line-clamp-2 text-[15px] font-black leading-tight sm:text-[18px]">
+                            {item.title}
+                          </h3>
+
+                          <p className="mt-1 text-[13px] opacity-55">
+                            {item.restaurant || "ClickEat Restaurant"}
+                          </p>
+
+                          <p className="mt-2 text-[15px] font-black text-[#ff6b00]">
+                            {formatSum(item.price)}
+                          </p>
+                        </div>
+
+                        <div className="mt-3 flex items-center justify-between">
+                          <div className="flex items-center gap-2 rounded-full bg-[#ff6b00] px-2 py-1.5">
+                            <button
+                              type="button"
+                              onClick={() => handleMinus(item.id)}
+                              className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-[#ff6b00]"
+                            >
+                              <FiMinus />
+                            </button>
+
+                            <b className="min-w-[20px] text-center text-white">
+                              {item.quantity}
+                            </b>
+
+                            <button
+                              type="button"
+                              onClick={() => handlePlus(item.id)}
+                              className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-[#ff6b00]"
+                            >
+                              <FiPlus />
+                            </button>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => handleRemove(item.id)}
+                            className="text-red-500"
+                          >
+                            <FiTrash2 />
+                          </button>
+                        </div>
                       </div>
-                    )}
-
-                    <div className="flex-1">
-                      <h3 className="font-extrabold text-[#2f3542]">
-                        {item.title}
-                      </h3>
-
-                      <p className="mt-1 text-sm text-[#7b8698]">
-                        {item.quantity} × {formatSum(item.price)}
-                      </p>
-
-                      <p className="mt-1 text-xs text-[#9aa3b4]">
-                        {item.restaurant || "ClickEat Restaurant"}
-                      </p>
                     </div>
-                  </div>
-                ))
-              ) : (
-                <div className="rounded-[22px] bg-[#fff8f1] p-6 text-center font-bold text-[#7b8698]">
-                  Корзина пустая
+                  ))}
                 </div>
               )}
-            </div>
+            </Card>
 
-            <div className="mt-6 grid gap-3 rounded-[24px] bg-[#fff8f1] p-5">
-              <SummaryRow label="Блюда" value={formatSum(subtotal)} />
-              <SummaryRow label="Доставка" value={formatSum(deliveryPrice)} />
+            <Card isDark={isDark}>
+              <h2 className="text-[22px] font-black lg:text-[28px]">
+                Клиент и доставка
+              </h2>
 
-              <div className="mt-3 border-t border-[#eadbcc] pt-4">
-                <SummaryRow label="Итого" value={formatSum(totalPrice)} big />
+              <p className="mt-1 text-[14px] opacity-55">
+                Эти данные попадут в заказ для сотрудника.
+              </p>
+
+              <div className="mt-5 grid gap-3">
+                <Field
+                  isDark={isDark}
+                  icon={<FiUser />}
+                  value={customerName}
+                  onChange={setCustomerName}
+                  placeholder="Имя клиента"
+                />
+
+                <Field
+                  isDark={isDark}
+                  icon={<FiTruck />}
+                  value={customerPhone}
+                  onChange={setCustomerPhone}
+                  placeholder="Телефон клиента"
+                />
+
+                <Field
+                  isDark={isDark}
+                  icon={<FiMapPin />}
+                  value={address}
+                  onChange={setAddress}
+                  placeholder="Адрес доставки"
+                />
+
+                <textarea
+                  value={comment}
+                  onChange={(event) => setComment(event.target.value)}
+                  placeholder="Комментарий к заказу"
+                  rows={4}
+                  className={`resize-none rounded-[20px] border px-4 py-3 outline-none ${
+                    isDark
+                      ? "border-white/10 bg-[#171717] text-white placeholder:text-white/35"
+                      : "border-black/10 bg-[#fff8f1] text-[#2f3542]"
+                  }`}
+                />
               </div>
-            </div>
+            </Card>
 
-            {error && (
-              <div className="mt-5 rounded-[18px] bg-red-50 px-5 py-4 font-bold text-red-600">
-                {error}
+            <Card isDark={isDark}>
+              <h2 className="text-[22px] font-black lg:text-[28px]">
+                Способ оплаты
+              </h2>
+
+              <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                <PaymentButton
+                  active={paymentMethod === "cash"}
+                  icon={<FiDollarSign />}
+                  label="Наличными"
+                  onClick={() => setPaymentMethod("cash")}
+                  isDark={isDark}
+                />
+
+                <PaymentButton
+                  active={paymentMethod === "card"}
+                  icon={<FiCreditCard />}
+                  label="Картой"
+                  onClick={() => setPaymentMethod("card")}
+                  isDark={isDark}
+                />
+
+                <PaymentButton
+                  active={paymentMethod === "online"}
+                  icon={<FiCreditCard />}
+                  label="Онлайн"
+                  onClick={() => setPaymentMethod("online")}
+                  isDark={isDark}
+                />
               </div>
-            )}
+            </Card>
+          </section>
 
-            <button
-              type="button"
-              onClick={handleSubmit}
-              disabled={loading || !cart.length}
-              className="mt-6 flex w-full items-center justify-center gap-2 rounded-[22px] bg-[#ff6b00] px-7 py-4 font-extrabold text-white shadow-[0_18px_35px_rgba(255,107,0,0.25)] transition hover:bg-[#ff5b00] disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              <FiSend />
-              {loading ? "Создаём заказ..." : "Подтвердить заказ"}
-            </button>
+          <aside className="xl:sticky xl:top-[150px] xl:h-fit">
+            <Card isDark={isDark}>
+              <h2 className="text-[26px] font-black">Итого</h2>
+
+              <div className="mt-5 grid gap-3">
+                <SummaryRow label="Блюда" value={formatSum(subtotal)} />
+                <SummaryRow
+                  label="Доставка"
+                  value={formatSum(deliveryPrice)}
+                />
+
+                <div
+                  className={`border-t pt-4 ${
+                    isDark ? "border-white/10" : "border-black/10"
+                  }`}
+                >
+                  <SummaryRow label="К оплате" value={formatSum(totalPrice)} big />
+                </div>
+              </div>
+
+              {error && (
+                <div className="mt-5 rounded-[18px] bg-red-50 px-5 py-4 text-[14px] font-bold text-red-600">
+                  {error}
+                </div>
+              )}
+
+              <button
+                type="button"
+                onClick={handleSubmit}
+                disabled={loading || !cart.length}
+                className="mt-6 flex w-full items-center justify-center gap-2 rounded-[22px] bg-[#ff6b00] px-7 py-4 font-black text-white shadow-[0_18px_35px_rgba(255,107,0,0.25)] transition hover:bg-[#ff5b00] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <FiSend />
+                {loading ? "Создаём заказ..." : "Подтвердить заказ"}
+              </button>
+            </Card>
           </aside>
         </div>
-      </section>
+      </Container>
     </main>
   );
 };
 
-function Field({
-  icon,
-  placeholder,
-  value,
-  onChange,
+function Card({
+  children,
+  isDark,
 }: {
-  icon: React.ReactNode;
-  placeholder: string;
-  value: string;
-  onChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  children: React.ReactNode;
+  isDark: boolean;
 }) {
   return (
-    <label className="flex items-center gap-4 rounded-[20px] border border-black/10 bg-[#fff8f1] px-5 py-4 transition focus-within:border-[#ff6b00] focus-within:bg-white">
-      <span className="text-xl text-[#ff6b00]">{icon}</span>
+    <div
+      className={`rounded-[26px] border p-4 sm:p-5 lg:rounded-[30px] lg:p-6 ${
+        isDark
+          ? "border-[#2b1708] bg-[#101010]"
+          : "border-black/10 bg-white shadow-[0_12px_30px_rgba(0,0,0,0.08)]"
+      }`}
+    >
+      {children}
+    </div>
+  );
+}
+
+function Field({
+  icon,
+  value,
+  onChange,
+  placeholder,
+  isDark,
+}: {
+  icon: React.ReactNode;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+  isDark: boolean;
+}) {
+  return (
+    <label
+      className={`flex items-center gap-3 rounded-[20px] border px-4 py-3 ${
+        isDark
+          ? "border-white/10 bg-[#171717] text-white"
+          : "border-black/10 bg-[#fff8f1] text-[#2f3542]"
+      }`}
+    >
+      <span className="shrink-0 text-[#ff6b00]">{icon}</span>
 
       <input
         value={value}
-        onChange={onChange}
+        onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
         className="w-full bg-transparent outline-none"
       />
@@ -479,25 +502,30 @@ function Field({
 function PaymentButton({
   active,
   icon,
-  title,
+  label,
   onClick,
+  isDark,
 }: {
   active: boolean;
   icon: React.ReactNode;
-  title: string;
+  label: string;
   onClick: () => void;
+  isDark: boolean;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-[22px] border p-5 text-left transition ${active
-        ? "border-[#ff6b00] bg-[#ff6b00] text-white shadow-[0_16px_30px_rgba(255,107,0,0.22)]"
-        : "border-black/10 bg-[#fff8f1] text-[#2f3542] hover:border-[#ff6b00]"
-        }`}
+      className={`rounded-[20px] border p-4 text-left font-black transition active:scale-[0.98] ${
+        active
+          ? "border-[#ff6b00] bg-[#ff6b00] text-white"
+          : isDark
+          ? "border-white/10 bg-[#171717] text-white"
+          : "border-black/10 bg-[#fff8f1] text-[#2f3542]"
+      }`}
     >
-      <div className="text-2xl">{icon}</div>
-      <p className="mt-4 font-extrabold">{title}</p>
+      <div className="text-[24px]">{icon}</div>
+      <p className="mt-2">{label}</p>
     </button>
   );
 }
@@ -512,14 +540,10 @@ function SummaryRow({
   big?: boolean;
 }) {
   return (
-    <div className="flex items-center justify-between">
-      <span className={big ? "text-lg font-black text-[#2f3542]" : "text-[#7b8698]"}>
-        {label}
-      </span>
+    <div className="flex items-center justify-between gap-4">
+      <span className={big ? "font-black" : "opacity-55"}>{label}</span>
 
-      <strong className={big ? "text-2xl text-[#ff6b00]" : "text-[#2f3542]"}>
-        {value}
-      </strong>
+      <b className={big ? "text-[22px] text-[#ff6b00]" : ""}>{value}</b>
     </div>
   );
 }

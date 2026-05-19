@@ -1,0 +1,16 @@
+.orders-page {
+  background: #050505;
+  color: #ffffff;
+}
+
+.orders-grid {
+  display: grid;
+  gap: 20px;
+}
+
+.orders-card,
+.orders-item {
+  border-radius: 26px;
+  background: #111111;
+  border: 1px solid rgba(255, 107, 0, 0.16);
+}

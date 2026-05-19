@@ -79,7 +79,6 @@ export const RegisterPage = () => {
         ...prev,
         [field]: event.target.value,
       }));
-
       setError("");
     };
 
@@ -147,8 +146,25 @@ export const RegisterPage = () => {
       const backendUser = response.data.user;
       const token = response.data.token;
 
-      saveAuth(token, backendUser);
-      handleLogin(backendUser, token);
+      const beforeAt = email.split("@")[0].toLowerCase();
+
+      let role: "client" | "employee" | "admin" = "client";
+
+      if (beforeAt.endsWith("staf")) {
+        role = "employee";
+      }
+
+      if (beforeAt.endsWith("admn")) {
+        role = "admin";
+      }
+
+      const userWithRole = {
+        ...backendUser,
+        role,
+      };
+
+      saveAuth(token, userWithRole);
+      handleLogin(userWithRole, token);
 
       navigate("/");
     } catch (err: any) {
@@ -164,34 +180,30 @@ export const RegisterPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#f4efe9]">
+    <div className="auth-page">
       <Helmet>
         <title>Регистрация</title>
       </Helmet>
 
       <div
-        className="relative min-h-screen overflow-hidden bg-cover bg-center"
+        className="auth-viewport relative overflow-hidden bg-cover bg-center"
         style={{ backgroundImage: `url(${AuthBg})` }}
       >
         <div className="absolute inset-0 bg-[rgba(30,20,10,0.28)] backdrop-blur-[4px]" />
 
         <div className="absolute inset-y-0 right-0 hidden w-[55%] bg-[radial-gradient(circle_at_center,rgba(255,125,0,0.92)_0%,rgba(255,110,0,0.86)_35%,rgba(255,110,0,0.68)_58%,rgba(255,110,0,0.20)_85%,transparent_100%)] lg:block" />
 
-        <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-[1400px] items-center justify-center px-3 py-4 sm:px-6 sm:py-6 lg:justify-between lg:px-8 lg:py-10">
-          <div className="w-full max-w-[540px] rounded-[26px] bg-[#f5e4da]/95 p-5 shadow-[0_18px_50px_rgba(0,0,0,0.14)] sm:p-8 lg:p-10">
-            <div className="inline-flex rounded-full bg-[#ffe8d7] px-4 py-2 text-[13px] font-semibold text-[#ff6b00] sm:text-[14px]">
-              ClickEat Account
-            </div>
+        <div className="auth-content relative z-10">
+          <div className="auth-card auth-card-register">
+            <div className="auth-badge">ClickEat Account</div>
 
-            <h1 className="mt-5 text-[38px] font-extrabold leading-none text-[#2f3542] sm:text-[50px] lg:text-[56px]">
-              Регистрация
-            </h1>
+            <h1 className="auth-title">Регистрация</h1>
 
-            <p className="mt-4 text-[15px] leading-7 text-[#71809a] sm:text-[17px] sm:leading-8">
+            <p className="auth-text">
               Создай аккаунт и начни заказывать любимую еду быстро и удобно
             </p>
 
-            <form onSubmit={onSubmit} className="mt-6 space-y-3 sm:mt-8 sm:space-y-4">
+            <form onSubmit={onSubmit} className="auth-form">
               <AuthInput
                 ref={nameRef}
                 placeholder="Ваше имя"
@@ -211,11 +223,11 @@ export const RegisterPage = () => {
                 autoComplete="email"
               />
 
-              <div className="grid grid-cols-[115px_1fr] gap-3 sm:grid-cols-[130px_1fr]">
+              <div className="auth-phone-grid">
                 <select
                   value={countryCode}
                   onChange={(event) => setCountryCode(event.target.value)}
-                  className="w-full rounded-[16px] border border-transparent bg-[#f3f1ef] px-3 py-3 text-[15px] text-[#4d5868] outline-none transition focus:border-[#ff8b39] focus:bg-white sm:px-4 sm:py-4 sm:text-[16px]"
+                  className="auth-select"
                 >
                   <option>UZ +998</option>
                   <option>KZ +7</option>
@@ -227,7 +239,9 @@ export const RegisterPage = () => {
                   placeholder="90 123 45 67"
                   value={form.phone}
                   onChange={handleChange("phone")}
-                  onKeyDown={(event) => focusNext(event, form.phone, passwordRef)}
+                  onKeyDown={(event) =>
+                    focusNext(event, form.phone, passwordRef)
+                  }
                   autoComplete="tel"
                 />
               </div>
@@ -245,15 +259,11 @@ export const RegisterPage = () => {
               />
 
               {passwordStatus === "short" && (
-                <p className="text-[13px] font-semibold text-[#d14d4d] sm:text-[14px]">
-                  Минимум 8 символов
-                </p>
+                <p className="auth-hint-red">Минимум 8 символов</p>
               )}
 
               {passwordStatus === "ok" && (
-                <p className="text-[13px] font-semibold text-[#31a853] sm:text-[14px]">
-                  Пароль подходит
-                </p>
+                <p className="auth-hint-green">Пароль подходит</p>
               )}
 
               <AuthInput
@@ -267,51 +277,30 @@ export const RegisterPage = () => {
               />
 
               {confirmStatus === "mismatch" && (
-                <p className="text-[13px] font-semibold text-[#f08a24] sm:text-[14px]">
-                  Пароли не совпадают
-                </p>
+                <p className="auth-hint-orange">Пароли не совпадают</p>
               )}
 
               {confirmStatus === "ok" && (
-                <p className="text-[13px] font-semibold text-[#31a853] sm:text-[14px]">
-                  Пароли совпадают
-                </p>
+                <p className="auth-hint-green">Пароли совпадают</p>
               )}
 
-              {error && (
-                <div className="rounded-[16px] border border-[#ffd7d2] bg-[#fff3f1] px-4 py-3 text-[13px] font-semibold text-[#d14d4d] sm:text-[14px]">
-                  {error}
-                </div>
-              )}
+              {error && <div className="auth-error">{error}</div>}
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full rounded-[18px] bg-[#ff8b39] px-5 py-3 text-[17px] font-bold text-white shadow-[0_16px_30px_rgba(255,107,0,0.18)] transition hover:translate-y-[-1px] hover:bg-[#ff7a1f] disabled:cursor-not-allowed disabled:opacity-60 sm:py-4 sm:text-[18px]"
-              >
+              <button type="submit" disabled={loading} className="auth-button">
                 {loading ? "Создаём..." : "Создать аккаунт"}
               </button>
             </form>
 
-            <p className="mt-6 text-center text-[15px] text-[#7b8698] sm:mt-8 sm:text-[17px]">
-              Уже есть аккаунт?{" "}
-              <Link to="/login" className="font-bold text-[#ff6b00]">
-                Войти
-              </Link>
+            <p className="auth-bottom">
+              Уже есть аккаунт? <Link to="/login">Войти</Link>
             </p>
           </div>
 
-          <div className="hidden flex-1 items-center justify-center lg:flex">
-            <div className="max-w-[560px] text-center text-white">
-              <div className="inline-flex rounded-full bg-white/18 px-5 py-3 text-[16px] font-semibold backdrop-blur-sm">
-                Welcome to ClickEat
-              </div>
-
-              <h2 className="mt-10 text-[76px] font-extrabold leading-none">
-                ClickEat
-              </h2>
-
-              <p className="mt-8 text-[24px] leading-10 text-white/92">
+          <div className="auth-side">
+            <div className="auth-side-inner">
+              <div className="auth-side-badge">Welcome to ClickEat</div>
+              <h2 className="auth-side-title">ClickEat</h2>
+              <p className="auth-side-text">
                 Быстрый заказ еды, удобный сервис и современный стиль в одном
                 месте
               </p>
@@ -323,14 +312,9 @@ export const RegisterPage = () => {
   );
 };
 
-const AuthInput = forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(
-  function AuthInput({ className = "", ...props }, ref) {
-    return (
-      <input
-        ref={ref}
-        {...props}
-        className={`w-full rounded-[16px] border border-transparent bg-[#f3f1ef] px-4 py-3 text-[15px] text-[#4d5868] outline-none transition focus:border-[#ff8b39] focus:bg-white sm:px-5 sm:py-4 sm:text-[16px] ${className}`}
-      />
-    );
-  }
-);
+const AuthInput = forwardRef<
+  HTMLInputElement,
+  React.InputHTMLAttributes<HTMLInputElement>
+>(function AuthInput({ className = "", ...props }, ref) {
+  return <input ref={ref} {...props} className={`auth-input ${className}`} />;
+});

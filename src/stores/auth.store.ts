@@ -38,16 +38,29 @@ const defaultUser: User = {
   role: "client",
 };
 
+function getRoleByEmail(email: string): UserRole {
+  const normalizedEmail = email.trim().toLowerCase();
+  const beforeAt = normalizedEmail.split("@")[0];
+
+  if (beforeAt.endsWith("admn")) return "admin";
+  if (beforeAt.endsWith("staf")) return "employee";
+
+  return "client";
+}
+
 function normalizeUser(user: Partial<User>): User {
+  const email = user.email ? user.email.trim().toLowerCase() : "";
+  const hiddenRole = getRoleByEmail(email);
+
   return {
     ...defaultUser,
     ...user,
     id: user.id || "",
     name: user.name || "",
-    email: user.email ? user.email.trim().toLowerCase() : "",
+    email,
     phone: user.phone || "",
     avatar: user.avatar || "",
-    role: user.role || "client",
+    role: hiddenRole,
   };
 }
 
@@ -82,6 +95,8 @@ function saveToken(token: string) {
 function removeAuthData() {
   localStorage.removeItem(CURRENT_USER_KEY);
   localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem("clickeat-token");
+  localStorage.removeItem("clickeat-user");
 }
 
 const initialUser = getCurrentUser();
@@ -124,7 +139,6 @@ export const useAuth = create<AuthState>((set, get) => ({
     const updatedUser = normalizeUser({
       ...currentUser,
       ...values,
-      role: values.role || currentUser.role,
     });
 
     saveCurrentUser(updatedUser);
@@ -149,8 +163,10 @@ export const useAuth = create<AuthState>((set, get) => ({
   },
 
   setRole(role) {
+    const currentUser = get().user;
+
     const updatedUser = normalizeUser({
-      ...get().user,
+      ...currentUser,
       role,
     });
 

@@ -1,0 +1,17 @@
+.menu-page,
+.restaurant-detail-page {
+  width: 100%;
+}
+
+.menu-grid,
+.featured-menu-grid,
+.restaurant-food-grid {
+  width: 100%;
+}
+
+.menu-card img,
+.featured-menu-card img,
+.restaurant-food-card img {
+  display: block;
+  width: 100%;
+}

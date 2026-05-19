@@ -1,277 +1,358 @@
-import { useState } from "react";
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 import {
-  FiUser,
-  FiPackage,
+  FiBox,
   FiClock,
-  FiTag,
-  FiStar,
-  FiAlertCircle,
-  FiChevronRight,
-  FiX,
+  FiHelpCircle,
+  FiLogIn,
   FiLogOut,
+  FiMessageSquare,
+  FiMoon,
+  FiSettings,
+  FiShield,
+  FiStar,
+  FiSun,
+  FiTag,
+  FiUser,
+  FiUserPlus,
+  FiX,
 } from "react-icons/fi";
-import { MdOutlineSupportAgent } from "react-icons/md";
-import { GoPerson } from "react-icons/go";
-import { HiOutlineMoon, HiOutlineSun } from "react-icons/hi2";
-import { PromoModal } from "./promo-modal";
+import { useAuth } from "../stores/auth.store";
+import { useThemeStore } from "../stores/theme.store";
 
-interface Props {
+type ProfileSidebarProps = {
   isOpen: boolean;
   onClose: () => void;
-  userEmail: string;
-  userName?: string;
-  userAvatar?: string;
-  logout: () => void;
-  orderCount: number;
-  theme: "light" | "dark";
-  toggleTheme: () => void;
-}
+};
 
-export const ProfileSidebar = ({
-  isOpen,
-  onClose,
-  userEmail,
-  userName,
-  userAvatar,
-  logout,
-  orderCount,
-  theme,
-  toggleTheme,
-}: Props) => {
-  const [isPromoOpen, setIsPromoOpen] = useState(false);
+export const ProfileSidebar = ({ isOpen, onClose }: ProfileSidebarProps) => {
+  const navigate = useNavigate();
+
+  const user = useAuth((state) => state.user);
+  const isAuthenticated = useAuth((state) => state.isAuthenticated);
+  const logout = useAuth((state) => state.handleLogout);
+
+  const theme = useThemeStore((state) => state.theme);
+  const toggleTheme = useThemeStore((state) => state.toggleTheme);
+
+  const isDark = theme === "dark";
+
+  const roleLabel =
+    user.role === "admin"
+      ? "ADMIN"
+      : user.role === "employee"
+      ? "EMPLOYEE"
+      : "CLIENT";
+
+  const canOpenEmployee = user.role === "employee" || user.role === "admin";
+
+  const handleLogout = () => {
+    const confirmed = window.confirm("Выйти из аккаунта?");
+    if (!confirmed) return;
+
+    logout();
+
+    localStorage.removeItem("clickeat-token");
+    localStorage.removeItem("clickeat-user");
+    localStorage.removeItem("click-eat-current-user");
+
+    onClose();
+    navigate("/");
+  };
 
   return (
     <>
       <div
         onClick={onClose}
-        className={`fixed inset-0 z-[190] bg-[rgba(25,16,10,0.42)] backdrop-blur-[5px] transition-all duration-300 ${isOpen ? "visible opacity-100" : "invisible opacity-0"
-          }`}
+        className={`fixed inset-0 z-[190] bg-black/45 backdrop-blur-[4px] transition-all duration-300 ${
+          isOpen ? "visible opacity-100" : "invisible opacity-0"
+        }`}
       />
 
       <aside
-        className={`profile-sidebar fixed top-0 right-0 z-[200] h-full w-[360px] border-l border-[rgba(255,107,0,0.18)] shadow-[-14px_0_40px_rgba(0,0,0,0.35)] backdrop-blur-[18px] transition-transform duration-300 ${isOpen ? "translate-x-0" : "translate-x-full"
-          }`}
+        className={`fixed right-0 top-0 z-[200] h-full w-[88vw] max-w-[420px] overflow-y-auto border-l transition-transform duration-300 sm:w-[50vw] ${
+          isOpen ? "translate-x-0" : "translate-x-full"
+        } ${
+          isDark
+            ? "border-[#2a1608] bg-[#0b0b0b] text-white"
+            : "border-[#ffd6bd] bg-[#fff8f1] text-[#2f3542]"
+        }`}
       >
-        <div className="flex h-full flex-col">
-          <div className="border-b border-[rgba(255,107,0,0.18)] px-6 pt-6 pb-5">
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div className="relative">
-                  {userAvatar ? (
+        <div
+          className={`border-b p-5 ${
+            isDark ? "border-white/10" : "border-[#ffd6bd]"
+          }`}
+        >
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <div className="flex h-[64px] w-[64px] items-center justify-center overflow-hidden rounded-[20px] bg-[#fff3e8] text-[28px] text-[#ff6b00]">
+                  {isAuthenticated && user.avatar ? (
                     <img
-                      src={userAvatar}
-                      alt="avatar"
-                      className="h-14 w-14 rounded-2xl object-cover shadow-[0_10px_22px_rgba(255,107,0,0.25)]"
+                      src={user.avatar}
+                      alt={user.name}
+                      className="h-full w-full object-cover"
                     />
                   ) : (
-                    <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-[#ff7a00] to-[#ff5a00] text-white shadow-[0_10px_22px_rgba(255,107,0,0.25)]">
-                      <GoPerson className="text-[24px]" />
-                    </div>
+                    <FiUser />
                   )}
-
-                  <span className="absolute -right-1 -bottom-1 h-4 w-4 rounded-full border-2 border-white bg-green-500" />
                 </div>
 
-                <div>
-                  <p className="profile-sidebar-muted text-[13px]">Аккаунт ClickEat</p>
+                {isAuthenticated && (
+                  <span className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full border-2 border-white bg-green-500" />
+                )}
+              </div>
 
-                  <p className="profile-sidebar-title mt-1 max-w-[180px] truncate text-[15px] font-semibold">
-                    {userName && userName.trim() !== "" ? userName : userEmail}
-                  </p>
-                  <p className="mt-1 text-[12px] text-green-500">Online</p>
+              <div>
+                <p
+                  className={`text-[12px] ${
+                    isDark ? "text-white/45" : "text-black/45"
+                  }`}
+                >
+                  Аккаунт ClickEat
+                </p>
+
+                <h3 className="text-[18px] font-black">
+                  {isAuthenticated ? user.name || "User" : "Гость"}
+                </h3>
+
+                <div className="mt-2 flex items-center gap-2">
+                  <span className="rounded-full bg-[#ff6b00]/15 px-2.5 py-1 text-[10px] font-black text-[#ff6b00]">
+                    {isAuthenticated ? roleLabel : "GUEST"}
+                  </span>
+
+                  <span
+                    className={`text-[12px] font-semibold ${
+                      isAuthenticated ? "text-green-500" : "text-red-500"
+                    }`}
+                  >
+                    {isAuthenticated ? "Online" : "Offline"}
+                  </span>
                 </div>
               </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={onClose}
+              className={`flex h-10 w-10 items-center justify-center rounded-full ${
+                isDark ? "bg-white/10 text-white" : "bg-white text-[#2f3542]"
+              }`}
+            >
+              <FiX />
+            </button>
+          </div>
+
+          <div
+            className={`mt-5 rounded-[22px] p-4 ${
+              isDark ? "bg-[#151515]" : "bg-white"
+            }`}
+          >
+            <p
+              className={`text-[12px] ${
+                isDark ? "text-white/45" : "text-black/45"
+              }`}
+            >
+              {isAuthenticated ? "Личный кабинет" : "Вход в аккаунт"}
+            </p>
+
+            <b className="mt-1 block text-[14px]">
+              {isAuthenticated
+                ? "Управляй профилем, заказами и бонусами"
+                : "Войдите или создайте аккаунт, чтобы оформлять заказы"}
+            </b>
+          </div>
+        </div>
+
+        {!isAuthenticated ? (
+          <div className="grid gap-3 p-5">
+            <SidebarLink
+              to="/login"
+              icon={<FiLogIn />}
+              label="Войти"
+              onClick={onClose}
+            />
+
+            <SidebarLink
+              to="/register"
+              icon={<FiUserPlus />}
+              label="Регистрация"
+              onClick={onClose}
+            />
+
+            <SidebarLink
+              to="/menu"
+              icon={<FiBox />}
+              label="Посмотреть меню"
+              onClick={onClose}
+            />
+          </div>
+        ) : (
+          <nav className="grid gap-3 p-5">
+            <SidebarLink
+              to="/profile"
+              icon={<FiUser />}
+              label="Профиль"
+              onClick={onClose}
+            />
+
+            <SidebarLink
+              to="/orders"
+              icon={<FiBox />}
+              label="Заказы"
+              onClick={onClose}
+            />
+
+            <SidebarLink
+              to="/order-history"
+              icon={<FiClock />}
+              label="История заказов"
+              onClick={onClose}
+            />
+
+            <SidebarLink
+              to="/promo"
+              icon={<FiTag />}
+              label="Промокоды"
+              onClick={onClose}
+            />
+
+            <SidebarLink
+              to="/support"
+              icon={<FiHelpCircle />}
+              label="Тех поддержка"
+              onClick={onClose}
+            />
+
+            <SidebarLink
+              to="/reviews"
+              icon={<FiStar />}
+              label="Отзывы"
+              onClick={onClose}
+            />
+
+            <SidebarLink
+              to="/complaints"
+              icon={<FiMessageSquare />}
+              label="Жалобы"
+              onClick={onClose}
+            />
+
+            {canOpenEmployee && (
+              <SidebarLink
+                to="/employee"
+                icon={<FiShield />}
+                label="Панель сотрудника"
+                onClick={onClose}
+              />
+            )}
+
+            {user.role === "admin" && (
+              <SidebarLink
+                to="/admin"
+                icon={<FiSettings />}
+                label="Админ панель"
+                onClick={onClose}
+              />
+            )}
+          </nav>
+        )}
+
+        <div className="px-5 pb-5">
+          <div
+            className={`rounded-[24px] border p-4 ${
+              isDark ? "border-white/10 bg-[#151515]" : "border-black/10 bg-white"
+            }`}
+          >
+            <h3 className="font-black">Оформление сайта</h3>
+
+            <p
+              className={`mt-1 text-[13px] ${
+                isDark ? "text-white/45" : "text-black/45"
+              }`}
+            >
+              Переключай дневной и ночной режим.
+            </p>
+
+            <div
+              className={`mt-4 grid grid-cols-2 rounded-[18px] p-1 ${
+                isDark ? "bg-black" : "bg-[#f6f1ea]"
+              }`}
+            >
+              <button
+                type="button"
+                onClick={() => {
+                  if (isDark) toggleTheme();
+                }}
+                className={`flex items-center justify-center gap-2 rounded-[15px] py-3 font-black ${
+                  !isDark ? "bg-[#ff6b00] text-white" : "text-white/55"
+                }`}
+              >
+                <FiSun />
+                Day
+              </button>
 
               <button
                 type="button"
-                onClick={onClose}
-                className="flex h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-white text-[#2f3542] transition hover:bg-[#ff6b00] hover:text-white"
+                onClick={() => {
+                  if (!isDark) toggleTheme();
+                }}
+                className={`flex items-center justify-center gap-2 rounded-[15px] py-3 font-black ${
+                  isDark ? "bg-[#ff6b00] text-white" : "text-black/55"
+                }`}
               >
-                <FiX className="text-[18px]" />
+                <FiMoon />
+                Night
               </button>
             </div>
-
-            <div className="mt-5 rounded-2xl bg-[#fff3e8] px-4 py-3">
-              <p className="text-[13px] text-[#8d796a]">Личный кабинет</p>
-              <p className="mt-1 text-[15px] font-semibold text-[#2f3542]">
-                Управляй профилем, заказами и бонусами
-              </p>
-            </div>
-          </div>
-
-          <div className="flex-1 overflow-y-auto px-4 py-5">
-            <div className="space-y-3">
-              <SidebarLink
-                to="/profile"
-                icon={<FiUser />}
-                label="Профиль"
-                onClick={onClose}
-              />
-
-              <SidebarLink
-                to="/orders"
-                icon={<FiPackage />}
-                label="Заказы"
-                onClick={onClose}
-                badge={orderCount > 0 ? String(orderCount) : undefined}
-              />
-
-              <SidebarLink
-                to="/order-history"
-                icon={<FiClock />}
-                label="История заказов"
-                onClick={onClose}
-              />
-
-              <SidebarButton
-                icon={<FiTag />}
-                label="Промокоды"
-                onClick={() => setIsPromoOpen(true)}
-              />
-
-              <SidebarLink
-                to="/support"
-                icon={<MdOutlineSupportAgent />}
-                label="Тех поддержка"
-                onClick={onClose}
-              />
-
-              <SidebarLink
-                to="/reviews"
-                icon={<FiStar />}
-                label="Отзывы и предложения"
-                onClick={onClose}
-              />
-
-              <SidebarLink
-                to="/complaints"
-                icon={<FiAlertCircle />}
-                label="Жалобы"
-                onClick={onClose}
-              />
-            </div>
-
-            <div className="mt-8 rounded-[24px] border border-white/20 bg-white/10 p-4 shadow-sm">
-              <h3 className="profile-sidebar-title text-[14px] font-semibold">
-                Оформление сайта
-              </h3>
-
-              <p className="profile-sidebar-muted mt-1 text-[13px]">
-                Переключай дневной и ночной режим.
-              </p>
-
-              <div className="mt-4 flex items-center justify-between rounded-2xl bg-white p-2">
-                <button
-                  type="button"
-                  onClick={() => theme !== "light" && toggleTheme()}
-                  className={`flex flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition ${theme === "light"
-                    ? "bg-[#ff6b00] text-white shadow-sm"
-                    : "text-[#687385]"
-                    }`}
-                >
-                  <HiOutlineSun />
-                  <span>Day</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => theme !== "dark" && toggleTheme()}
-                  className={`flex flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition ${theme === "dark"
-                    ? "bg-[#ff6b00] text-white shadow-sm"
-                    : "text-[#687385]"
-                    }`}
-                >
-                  <HiOutlineMoon />
-                  <span>Night</span>
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div className="border-t border-[rgba(255,107,0,0.18)] px-4 py-4">
-            <button
-              type="button"
-              onClick={() => {
-                logout();
-                onClose();
-              }}
-              className="group flex w-full items-center justify-center gap-2 rounded-[22px] bg-gradient-to-r from-[#ff7a00] to-[#ff5a00] px-4 py-3 text-[15px] font-semibold text-white shadow-[0_12px_24px_rgba(255,107,0,0.22)] transition hover:bg-none hover:bg-white hover:text-[#ff6b00]"
-            >
-              <FiLogOut className="text-[17px] text-white transition group-hover:text-[#ff6b00]" />
-              <span>Выйти из аккаунта</span>
-            </button>
           </div>
         </div>
-      </aside>
 
-      <PromoModal
-        isOpen={isPromoOpen}
-        onClose={() => setIsPromoOpen(false)}
-        onApply={() => setIsPromoOpen(false)}
-      />
+        {isAuthenticated && (
+          <div
+            className={`sticky bottom-0 border-t p-5 ${
+              isDark
+                ? "border-white/10 bg-[#0b0b0b]"
+                : "border-[#ffd6bd] bg-[#fff8f1]"
+            }`}
+          >
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="flex w-full items-center justify-center gap-2 rounded-[22px] bg-[#ff6b00] py-4 text-[15px] font-black text-white"
+            >
+              <FiLogOut />
+              Выйти из аккаунта
+            </button>
+          </div>
+        )}
+      </aside>
     </>
   );
 };
 
-interface SidebarLinkProps {
-  to: string;
-  icon: React.ReactNode;
-  label: string;
-  onClick?: () => void;
-  badge?: string;
-}
-
-function SidebarLink({ to, icon, label, onClick, badge }: SidebarLinkProps) {
-  return (
-    <Link
-      to={to}
-      onClick={onClick}
-      className="group flex items-center justify-between rounded-[22px] bg-gradient-to-r from-[#ff7a00] to-[#ff5a00] px-4 py-3 text-white shadow-[0_12px_24px_rgba(255,107,0,0.22)] transition hover:bg-none hover:bg-white hover:text-[#ff6b00]"
-    >
-      <div className="flex items-center gap-3">
-        <span className="text-[18px] text-white transition group-hover:text-[#ff6b00]">
-          {icon}
-        </span>
-        <span className="text-[15px] font-semibold">{label}</span>
-      </div>
-
-      <div className="flex items-center gap-2">
-        {badge && (
-          <span className="min-w-[28px] rounded-full bg-white/20 px-2 py-1 text-center text-[12px] font-semibold text-white transition group-hover:bg-[#ffefe3] group-hover:text-[#ff6b00]">
-            {badge}
-          </span>
-        )}
-
-        <FiChevronRight className="text-[16px] text-white transition group-hover:text-[#ff6b00]" />
-      </div>
-    </Link>
-  );
-}
-
-function SidebarButton({
+function SidebarLink({
+  to,
   icon,
   label,
   onClick,
 }: {
+  to: string;
   icon: React.ReactNode;
   label: string;
   onClick: () => void;
 }) {
   return (
-    <button
-      type="button"
+    <Link
+      to={to}
       onClick={onClick}
-      className="group flex w-full items-center justify-between rounded-[22px] bg-gradient-to-r from-[#ff7a00] to-[#ff5a00] px-4 py-3 text-white shadow-[0_12px_24px_rgba(255,107,0,0.22)] transition hover:bg-none hover:bg-white hover:text-[#ff6b00]"
+      className="group flex items-center justify-between rounded-[22px] bg-[#ff6b00] px-5 py-4 text-[15px] font-black text-white transition active:scale-[0.98]"
     >
-      <div className="flex items-center gap-3">
-        <span className="text-[18px] text-white transition group-hover:text-[#ff6b00]">
-          {icon}
-        </span>
-        <span className="text-[15px] font-semibold">{label}</span>
-      </div>
+      <span className="flex items-center gap-3">
+        <span className="text-[20px]">{icon}</span>
+        {label}
+      </span>
 
-      <FiChevronRight className="text-[16px] text-white transition group-hover:text-[#ff6b00]" />
-    </button>
+      <span className="transition group-hover:translate-x-1">›</span>
+    </Link>
   );
 }

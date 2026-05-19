@@ -1,11 +1,24 @@
-import type { ReactNode } from "react"
+import { ReactNode } from "react";
 
-export const Container = ({children}:Props) => {
-    return <div className="container mx-auto px-4">
-        {children}
+type Props = {
+  children: ReactNode;
+  className?: string;
+};
+
+export const Container = ({ children, className = "" }: Props) => {
+  return (
+    <div
+      className={`
+        mx-auto
+        w-full
+        max-w-[1480px]
+        px-4
+        sm:px-6
+        lg:px-8
+        ${className}
+      `}
+    >
+      {children}
     </div>
-}
-
-interface Props {
-    children: ReactNode
-}
+  );
+};

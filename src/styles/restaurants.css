@@ -1,0 +1,16 @@
+.restaurants-page {
+  width: 100%;
+}
+
+.restaurants-container {
+  width: 100%;
+}
+
+.restaurants-grid {
+  width: 100%;
+}
+
+.restaurants-card img {
+  display: block;
+  width: 100%;
+}
