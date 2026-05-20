@@ -2,12 +2,8 @@
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import {
-  FiCheck,
-  FiClock,
-  FiPackage,
   FiTruck,
   FiUser,
-  FiX,
 } from "react-icons/fi";
 
 import { Container } from "../../widgets/container";
@@ -126,11 +122,10 @@ export const EmployeePage = () => {
 
   return (
     <main
-      className={`min-h-screen pb-20 pt-[140px] ${
-        isDark
+      className={`min-h-screen pb-20 pt-[140px] ${isDark
           ? "bg-black text-white"
           : "bg-[#f6f1ea] text-[#2f3542]"
-      }`}
+        }`}
     >
       <Container>
         <div className="mb-8">
@@ -143,9 +138,8 @@ export const EmployeePage = () => {
           </h1>
 
           <p
-            className={`mt-2 ${
-              isDark ? "text-white/55" : "text-black/55"
-            }`}
+            className={`mt-2 ${isDark ? "text-white/55" : "text-black/55"
+              }`}
           >
             Управление доставкой и заказами.
           </p>
@@ -155,11 +149,10 @@ export const EmployeePage = () => {
           <div>Загрузка...</div>
         ) : !orders.length ? (
           <div
-            className={`rounded-[28px] border p-8 ${
-              isDark
+            className={`rounded-[28px] border p-8 ${isDark
                 ? "border-[#2b1708] bg-[#101010]"
                 : "border-black/10 bg-white"
-            }`}
+              }`}
           >
             <h2 className="text-[28px] font-black">
               Заказов пока нет
@@ -173,11 +166,10 @@ export const EmployeePage = () => {
               return (
                 <article
                   key={order._id}
-                  className={`rounded-[28px] border p-5 ${
-                    isDark
+                  className={`rounded-[28px] border p-5 ${isDark
                       ? "border-[#2b1708] bg-[#101010]"
                       : "border-black/10 bg-white"
-                  }`}
+                    }`}
                 >
                   <div className="flex flex-wrap items-center justify-between gap-4">
                     <div>
@@ -215,11 +207,10 @@ export const EmployeePage = () => {
                     {order.items.map((item, index) => (
                       <div
                         key={index}
-                        className={`flex items-center justify-between rounded-[18px] p-3 ${
-                          isDark
+                        className={`flex items-center justify-between rounded-[18px] p-3 ${isDark
                             ? "bg-[#171717]"
                             : "bg-[#fff8f1]"
-                        }`}
+                          }`}
                       >
                         <div>
                           <h3 className="font-bold">
@@ -288,9 +279,8 @@ function InfoCard({
 }) {
   return (
     <div
-      className={`rounded-[18px] p-4 ${
-        isDark ? "bg-[#171717]" : "bg-[#fff8f1]"
-      }`}
+      className={`rounded-[18px] p-4 ${isDark ? "bg-[#171717]" : "bg-[#fff8f1]"
+        }`}
     >
       <div className="flex items-center gap-2 text-[#ff6b00]">
         {icon}
