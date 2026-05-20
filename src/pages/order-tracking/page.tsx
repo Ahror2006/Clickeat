@@ -15,8 +15,10 @@ import {
   FiPackage,
   FiTruck,
 } from "react-icons/fi";
-import { getToken } from "../../lib/auth";
+
+import { cancelOrder, getOrderById } from "../../lib/orders.api";
 import { socket } from "../../lib/socket";
+import { useThemeStore } from "../../stores/theme.store";
 
 type OrderStatus =
   | "pending"
@@ -79,7 +81,7 @@ const statusIndex: Record<OrderStatus, number> = {
 
 const steps = [
   { status: "pending", label: "Заказ создан", icon: <FiPackage /> },
-  { status: "accepted", label: "Ресторан принял", icon: <FiCheckCircle /> },
+  { status: "accepted", label: "Принят", icon: <FiCheckCircle /> },
   { status: "cooking", label: "Готовится", icon: <FiClock /> },
   { status: "delivering", label: "Курьер в пути", icon: <FiTruck /> },
   { status: "completed", label: "Доставлено", icon: <FiCheckCircle /> },
@@ -88,21 +90,21 @@ const steps = [
 function createEmojiIcon(emoji: string) {
   return L.divIcon({
     html: `<div style="
-      width: 46px;
-      height: 46px;
+      width: 42px;
+      height: 42px;
       border-radius: 50%;
       background: #ff6b00;
       color: white;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 24px;
+      font-size: 22px;
       border: 4px solid white;
       box-shadow: 0 10px 30px rgba(0,0,0,0.25);
     ">${emoji}</div>`,
     className: "",
-    iconSize: [46, 46],
-    iconAnchor: [23, 23],
+    iconSize: [42, 42],
+    iconAnchor: [21, 21],
   });
 }
 
@@ -138,35 +140,42 @@ function toLatLng(
 
 export const OrderTrackingPage = () => {
   const { id } = useParams();
-  const token = getToken();
+
+  const theme = useThemeStore((state) => state.theme);
+  const isDark = theme === "dark";
 
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
+  const [cancelLoading, setCancelLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const fetchOrder = async () => {
+  const fetchOrder = async (silent = false) => {
+    if (!id) return;
+
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       setError("");
 
-      const response = await fetch(`https://clickeat-5wy1.onrender.com/api/orders/${id}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        setError(data.message || "Заказ не найден");
-        return;
-      }
-
-      setOrder(data.order);
-    } catch {
-      setError("Backend не отвечает");
+      const data = await getOrderById(id);
+      setOrder(data);
+    } catch (err: any) {
+      setError(err?.response?.data?.message || "Заказ не найден");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCancelOrder = async () => {
+    if (!order) return;
+
+    try {
+      setCancelLoading(true);
+      const updatedOrder = await cancelOrder(order.id);
+      setOrder(updatedOrder);
+    } catch (err: any) {
+      alert(err?.response?.data?.message || "Не удалось отменить заказ");
+    } finally {
+      setCancelLoading(false);
     }
   };
 
@@ -175,22 +184,23 @@ export const OrderTrackingPage = () => {
 
     if (!id) return;
 
+    const interval = window.setInterval(() => {
+      fetchOrder(true);
+    }, 5000);
+
     socket.connect();
     socket.emit("join-order-room", id);
 
     socket.on("order:status-updated", (updatedOrder: Order) => {
-      if (updatedOrder.id === id) {
-        setOrder(updatedOrder);
-      }
+      if (updatedOrder.id === id) setOrder(updatedOrder);
     });
 
     socket.on("courier:location-updated", (updatedOrder: Order) => {
-      if (updatedOrder.id === id) {
-        setOrder(updatedOrder);
-      }
+      if (updatedOrder.id === id) setOrder(updatedOrder);
     });
 
     return () => {
+      window.clearInterval(interval);
       socket.emit("leave-order-room", id);
       socket.off("order:status-updated");
       socket.off("courier:location-updated");
@@ -200,20 +210,9 @@ export const OrderTrackingPage = () => {
   const mapData = useMemo(() => {
     if (!order) return null;
 
-    const restaurant: [number, number] = toLatLng(order.restaurantLocation, [
-      41.315,
-      69.248,
-    ]);
-
-    const client: [number, number] = toLatLng(order.deliveryLocation, [
-      41.311081,
-      69.240562,
-    ]);
-
-    const courier: [number, number] = toLatLng(
-      order.courierLocation,
-      restaurant
-    );
+    const restaurant = toLatLng(order.restaurantLocation, [41.315, 69.248]);
+    const client = toLatLng(order.deliveryLocation, [41.311081, 69.240562]);
+    const courier = toLatLng(order.courierLocation, restaurant);
 
     return {
       center: courier,
@@ -226,48 +225,45 @@ export const OrderTrackingPage = () => {
 
   if (loading) {
     return (
-      <section className="px-3 pb-10 sm:px-6 sm:pb-20">
-        <div className="mx-auto max-w-[1300px] rounded-[28px] bg-white p-6 shadow sm:rounded-[34px] sm:p-10">
-          <h1 className="text-2xl font-black text-[#2f3542] sm:text-3xl">
-            Загружаем отслеживание...
-          </h1>
+      <main className={`tracking-page ${isDark ? "tracking-dark" : ""}`}>
+        <div className="tracking-shell">
+          <div className="tracking-card tracking-loading">
+            <div className="tracking-spinner" />
+            <h1>Загружаем заказ...</h1>
+          </div>
         </div>
-      </section>
+      </main>
     );
   }
 
   if (error || !order || !mapData) {
     return (
-      <section className="px-3 pb-10 sm:px-6 sm:pb-20">
-        <div className="mx-auto max-w-[1300px] rounded-[28px] bg-red-50 p-6 font-bold text-red-600 sm:rounded-[34px] sm:p-10">
-          {error || "Заказ не найден"}
+      <main className={`tracking-page ${isDark ? "tracking-dark" : ""}`}>
+        <div className="tracking-shell">
+          <div className="tracking-error">{error || "Заказ не найден"}</div>
         </div>
-      </section>
+      </main>
     );
   }
 
   const currentStep = statusIndex[order.status];
+  const progress = order.status === "cancelled" ? 0 : (currentStep / 4) * 100;
+  const canCancel = ["pending", "accepted", "cooking"].includes(order.status);
 
   return (
-    <section className="px-3 pb-10 sm:px-6 sm:pb-20">
-      <div className="mx-auto max-w-[1350px]">
-        <div className="mb-5 sm:mb-8">
-          <p className="text-sm font-bold text-[#ff6b00] sm:text-base">
-            ClickEat Tracking
-          </p>
-
-          <h1 className="text-[32px] font-black leading-tight text-[#2f3542] sm:text-[48px]">
-            Отслеживание заказа
-          </h1>
-
-          <p className="mt-2 text-sm text-[#7b8698] sm:text-base">
+    <main className={`tracking-page ${isDark ? "tracking-dark" : ""}`}>
+      <div className="tracking-shell">
+        <div className="tracking-head">
+          <span>ClickEat Tracking</span>
+          <h1>Отслеживание заказа</h1>
+          <p>
             Заказ #{order.id.slice(-6)} • {statusLabels[order.status]}
           </p>
         </div>
 
-        <div className="grid gap-5 lg:grid-cols-[1fr_430px] lg:gap-7">
-          <div className="overflow-hidden rounded-[28px] bg-white shadow-[0_18px_45px_rgba(0,0,0,0.08)] sm:rounded-[38px]">
-            <div className="h-[340px] sm:h-[450px] lg:h-[560px]">
+        <div className="tracking-layout">
+          <section className="tracking-map-card">
+            <div className="tracking-map">
               <MapContainer
                 center={mapData.center}
                 zoom={13}
@@ -279,6 +275,7 @@ export const OrderTrackingPage = () => {
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 />
 
+                {/* маршрут */}
                 <Polyline
                   positions={mapData.route}
                   pathOptions={{
@@ -288,152 +285,130 @@ export const OrderTrackingPage = () => {
                   }}
                 />
 
+                {/* ресторан */}
                 <Marker
                   position={mapData.restaurant}
-                  icon={restaurantIcon as L.Icon | L.DivIcon}
+                  icon={restaurantIcon}
                 >
                   <Popup>
-                    <b>Ресторан</b>
-                    <br />
-                    {order.restaurantName}
+                    <div className="text-center">
+                      <b>🍔 Ресторан</b>
+                      <br />
+                      {order.restaurantName}
+                    </div>
                   </Popup>
                 </Marker>
 
+                {/* курьер */}
                 <Marker
                   position={mapData.courier}
-                  icon={courierIcon as L.Icon | L.DivIcon}
+                  icon={courierIcon}
                 >
                   <Popup>
-                    <b>Курьер</b>
-                    <br />
-                    {order.courierName || "ClickEat Courier"}
+                    <div className="text-center">
+                      <b>🛵 Курьер</b>
+                      <br />
+                      {order.courierName || "ClickEat Courier"}
+                    </div>
                   </Popup>
                 </Marker>
 
+                {/* клиент */}
                 <Marker
                   position={mapData.client}
-                  icon={clientIcon as L.Icon | L.DivIcon}
+                  icon={clientIcon}
                 >
                   <Popup>
-                    <b>Вы</b>
-                    <br />
-                    {formatAddress(order.address)}
+                    <div className="text-center">
+                      <b>📍 Доставка</b>
+                      <br />
+                      {order.address}
+                    </div>
                   </Popup>
                 </Marker>
               </MapContainer>
             </div>
-          </div>
+          </section>
 
-          <aside className="grid gap-4 sm:gap-5">
-            <div className="sticky top-[95px] z-20 rounded-[26px] bg-white p-5 shadow-[0_18px_45px_rgba(0,0,0,0.08)] sm:rounded-[34px] sm:p-6">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <p className="text-sm font-bold text-[#ff6b00] sm:text-base">
-                    ETA
-                  </p>
+          <aside className="tracking-side">
+            <div className="tracking-card tracking-eta">
+              <div>
+                <span>ETA</span>
+                <h2>{order.estimatedDeliveryTime || "35-45 минут"}</h2>
+                <p>{statusLabels[order.status]}</p>
+              </div>
 
-                  <h2 className="mt-1 text-[32px] font-black leading-none text-[#2f3542] sm:text-4xl">
-                    {order.estimatedDeliveryTime || "35-45 минут"}
-                  </h2>
-
-                  <p className="mt-2 text-sm text-[#7b8698] sm:text-base">
-                    {statusLabels[order.status]}
-                  </p>
-                </div>
-
-                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#fff0e6] text-2xl text-[#ff6b00] sm:h-16 sm:w-16">
-                  <FiTruck />
-                </div>
+              <div className="tracking-eta-icon">
+                <FiTruck />
               </div>
             </div>
 
-            <div className="rounded-[26px] bg-white p-5 shadow-[0_18px_45px_rgba(0,0,0,0.08)] sm:rounded-[34px] sm:p-6">
-              <h2 className="text-xl font-black text-[#2f3542] sm:text-2xl">
-                Статус доставки
-              </h2>
+            {canCancel && (
+              <button
+                type="button"
+                onClick={handleCancelOrder}
+                disabled={cancelLoading}
+                className="w-full rounded-[22px] bg-red-500 px-5 py-4 text-[14px] font-black text-white disabled:opacity-60"
+              >
+                {cancelLoading ? "Отменяем..." : "Отменить заказ"}
+              </button>
+            )}
 
-              <div className="mt-5 grid gap-4">
+            <div className="tracking-card">
+              <h2>Статус доставки</h2>
+
+              <div className="tracking-progress">
+                <div style={{ width: `${progress}%` }} />
+              </div>
+
+              <div className="tracking-steps">
                 {steps.map((step, index) => {
                   const active = currentStep >= index;
 
                   return (
-                    <div key={step.status} className="flex items-center gap-4">
-                      <div
-                        className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-lg ${
-                          active
-                            ? "bg-[#ff6b00] text-white"
-                            : "bg-[#fff0e6] text-[#ff6b00]"
-                        }`}
-                      >
-                        {step.icon}
-                      </div>
-
-                      <p
-                        className={`text-sm font-black sm:text-base ${
-                          active ? "text-[#2f3542]" : "text-[#9aa3b4]"
-                        }`}
-                      >
-                        {step.label}
-                      </p>
+                    <div key={step.status} className="tracking-step">
+                      <div className={active ? "active" : ""}>{step.icon}</div>
+                      <p className={active ? "active" : ""}>{step.label}</p>
                     </div>
                   );
                 })}
               </div>
             </div>
 
-            <div className="rounded-[26px] bg-white p-5 shadow-[0_18px_45px_rgba(0,0,0,0.08)] sm:rounded-[34px] sm:p-6">
-              <h2 className="text-xl font-black text-[#2f3542] sm:text-2xl">
-                Адрес доставки
-              </h2>
+            <div className="tracking-card">
+              <h2>Адрес доставки</h2>
 
-              <div className="mt-4 flex gap-3 rounded-[20px] bg-[#fff8f1] p-4 sm:gap-4 sm:rounded-[22px]">
-                <FiMapPin className="mt-1 shrink-0 text-2xl text-[#ff6b00]" />
-
-                <div className="min-w-0">
-                  <p className="break-words text-sm font-black text-[#2f3542] sm:text-base">
-                    {formatAddress(order.address)}
-                  </p>
-
-                  <p className="mt-1 text-xs text-[#7b8698] sm:text-sm">
-                    Точка доставки выбрана на карте.
-                  </p>
+              <div className="tracking-address">
+                <FiMapPin />
+                <div>
+                  <b>{formatAddress(order.address)}</b>
+                  <p>Точка доставки выбрана на карте.</p>
                 </div>
               </div>
             </div>
 
-            <div className="rounded-[26px] bg-white p-5 shadow-[0_18px_45px_rgba(0,0,0,0.08)] sm:rounded-[34px] sm:p-6">
-              <h2 className="text-xl font-black text-[#2f3542] sm:text-2xl">
-                Ваш заказ
-              </h2>
+            <div className="tracking-card">
+              <h2>Ваш заказ</h2>
 
-              <div className="mt-4 grid gap-3">
+              <div className="tracking-items">
                 {order.items.map((item, index) => (
-                  <div
-                    key={`${item.name}-${index}`}
-                    className="flex items-center justify-between gap-4 rounded-[18px] bg-[#fff8f1] p-4"
-                  >
-                    <span className="text-sm font-bold text-[#2f3542] sm:text-base">
+                  <div key={`${item.name}-${index}`} className="tracking-item">
+                    <span>
                       {item.name} × {item.quantity}
                     </span>
-
-                    <b className="shrink-0 text-sm text-[#ff6b00] sm:text-base">
-                      {formatSum(item.price)}
-                    </b>
+                    <b>{formatSum(item.price)}</b>
                   </div>
                 ))}
               </div>
 
-              <div className="mt-5 rounded-[22px] bg-[#ff6b00] p-5 text-white sm:rounded-[24px]">
-                <p className="text-sm opacity-80 sm:text-base">Итого</p>
-
-                <h3 className="text-[28px] font-black sm:text-3xl">
-                  {formatSum(order.totalPrice)}
-                </h3>
+              <div className="tracking-total">
+                <span>Итого</span>
+                <b>{formatSum(order.totalPrice)}</b>
               </div>
             </div>
           </aside>
         </div>
       </div>
-    </section>
+    </main>
   );
 };

@@ -5,13 +5,14 @@ import {
   emitOrderCreated,
   emitOrderStatusUpdated,
   emitCourierLocationUpdated,
+  startCourierSimulation,
 } from "../socket.js";
 
 const router = express.Router();
 
 function publicOrder(order) {
   return {
-    id: order._id,
+    id: order._id.toString(),
     user: order.user,
     customerName: order.customerName,
     customerPhone: order.customerPhone,
@@ -63,10 +64,16 @@ router.post("/", protect, async (req, res) => {
       });
     }
 
-    if (!totalPrice || totalPrice <= 0) {
+    const activeOrder = await Order.findOne({
+      user: req.user._id,
+      status: { $in: ["pending", "accepted", "cooking", "delivering"] },
+    });
+
+    if (activeOrder) {
       return res.status(400).json({
         success: false,
-        message: "Некорректная сумма заказа",
+        message:
+          "У вас уже есть активный заказ. Дождитесь завершения или отмените его.",
       });
     }
 
@@ -76,40 +83,40 @@ router.post("/", protect, async (req, res) => {
       customerPhone,
       address,
       deliveryLocation: {
-        lat: deliveryLocation?.lat || null,
-        lng: deliveryLocation?.lng || null,
+        lat: deliveryLocation?.lat ?? null,
+        lng: deliveryLocation?.lng ?? null,
         address: deliveryLocation?.address || address,
       },
       restaurantName: restaurantName || "ClickEat Restaurant",
       restaurantLocation: {
-        lat: restaurantLocation?.lat || 41.311081,
-        lng: restaurantLocation?.lng || 69.240562,
+        lat: restaurantLocation?.lat ?? 41.311081,
+        lng: restaurantLocation?.lng ?? 69.240562,
         address: restaurantLocation?.address || "ClickEat Restaurant, Tashkent",
       },
       courierName: "",
       courierPhone: "",
       courierLocation: {
-        lat: restaurantLocation?.lat || 41.311081,
-        lng: restaurantLocation?.lng || 69.240562,
+        lat: restaurantLocation?.lat ?? 41.311081,
+        lng: restaurantLocation?.lng ?? 69.240562,
         address: "Courier is waiting near restaurant",
       },
       items,
       totalPrice,
       paymentMethod: paymentMethod || "cash",
       comment: comment || "",
+      status: "pending",
     });
 
     const responseOrder = publicOrder(order);
-
     emitOrderCreated(responseOrder);
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       message: "Заказ создан",
       order: responseOrder,
     });
   } catch (error) {
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: "Ошибка создания заказа",
       error: error.message,
@@ -124,14 +131,65 @@ router.get("/my", protect, async (req, res) => {
       createdAt: -1,
     });
 
-    res.json({
+    return res.json({
       success: true,
       orders: orders.map(publicOrder),
     });
-  } catch {
-    res.status(500).json({
+  } catch (error) {
+    return res.status(500).json({
       success: false,
       message: "Ошибка загрузки заказов",
+      error: error.message,
+    });
+  }
+});
+
+// CLIENT: cancel own order
+router.patch("/:id/cancel", protect, async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id);
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Заказ не найден",
+      });
+    }
+
+    const isOwner = String(order.user) === String(req.user._id);
+
+    if (!isOwner) {
+      return res.status(403).json({
+        success: false,
+        message: "Можно отменить только свой заказ",
+      });
+    }
+
+    const canCancel = ["pending", "accepted", "cooking"].includes(order.status);
+
+    if (!canCancel) {
+      return res.status(400).json({
+        success: false,
+        message: "Этот заказ уже нельзя отменить",
+      });
+    }
+
+    order.status = "cancelled";
+    await order.save();
+
+    const responseOrder = publicOrder(order);
+    emitOrderStatusUpdated(responseOrder);
+
+    return res.json({
+      success: true,
+      message: "Заказ отменён",
+      order: responseOrder,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Ошибка отмены заказа",
+      error: error.message,
     });
   }
 });
@@ -151,7 +209,9 @@ router.get("/:id", protect, async (req, res) => {
       });
     }
 
-    const isOwner = String(order.user._id || order.user) === String(req.user._id);
+    const isOwner =
+      String(order.user._id || order.user) === String(req.user._id);
+
     const isStaff = req.user.role === "admin" || req.user.role === "employee";
 
     if (!isOwner && !isStaff) {
@@ -161,41 +221,38 @@ router.get("/:id", protect, async (req, res) => {
       });
     }
 
-    res.json({
+    return res.json({
       success: true,
       order: publicOrder(order),
     });
-  } catch {
-    res.status(500).json({
+  } catch (error) {
+    return res.status(500).json({
       success: false,
       message: "Ошибка загрузки заказа",
+      error: error.message,
     });
   }
 });
 
 // EMPLOYEE + ADMIN: all orders
-router.get(
-  "/",
-  protect,
-  allowRoles("employee", "admin"),
-  async (req, res) => {
-    try {
-      const orders = await Order.find()
-        .populate("user", "name email phone role")
-        .sort({ createdAt: -1 });
+router.get("/", protect, allowRoles("employee", "admin"), async (req, res) => {
+  try {
+    const orders = await Order.find()
+      .populate("user", "name email phone role")
+      .sort({ createdAt: -1 });
 
-      res.json({
-        success: true,
-        orders: orders.map(publicOrder),
-      });
-    } catch {
-      res.status(500).json({
-        success: false,
-        message: "Ошибка загрузки всех заказов",
-      });
-    }
+    return res.json({
+      success: true,
+      orders: orders.map(publicOrder),
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Ошибка загрузки всех заказов",
+      error: error.message,
+    });
   }
-);
+});
 
 // EMPLOYEE + ADMIN: change status
 router.patch(
@@ -222,11 +279,7 @@ router.patch(
         });
       }
 
-      const order = await Order.findByIdAndUpdate(
-        req.params.id,
-        { status },
-        { new: true }
-      );
+      const order = await Order.findById(req.params.id);
 
       if (!order) {
         return res.status(404).json({
@@ -235,19 +288,33 @@ router.patch(
         });
       }
 
-      const responseOrder = publicOrder(order);
+      if (["completed", "cancelled"].includes(order.status)) {
+        return res.status(400).json({
+          success: false,
+          message: "Этот заказ уже закрыт",
+        });
+      }
 
+      order.status = status;
+      await order.save();
+
+      const responseOrder = publicOrder(order);
       emitOrderStatusUpdated(responseOrder);
 
-      res.json({
+      if (status === "delivering") {
+        startCourierSimulation(order);
+      }
+
+      return res.json({
         success: true,
         message: "Статус заказа обновлён",
         order: responseOrder,
       });
-    } catch {
-      res.status(500).json({
+    } catch (error) {
+      return res.status(500).json({
         success: false,
         message: "Ошибка изменения статуса",
+        error: error.message,
       });
     }
   }
@@ -291,18 +358,18 @@ router.patch(
       }
 
       const responseOrder = publicOrder(order);
-
       emitCourierLocationUpdated(responseOrder);
 
-      res.json({
+      return res.json({
         success: true,
         message: "Локация курьера обновлена",
         order: responseOrder,
       });
-    } catch {
-      res.status(500).json({
+    } catch (error) {
+      return res.status(500).json({
         success: false,
         message: "Ошибка обновления локации курьера",
+        error: error.message,
       });
     }
   }

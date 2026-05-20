@@ -70,3 +70,8 @@ export async function updateOrderStatus(
 
   return response.data.order;
 }
+
+export async function cancelOrder(id: string) {
+  const response = await api.patch(`/orders/${id}/cancel`);
+  return response.data.order;
+}

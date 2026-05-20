@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router";
 import { Container } from "../../widgets/container";
-import { clearCart, getCart, saveCart, type CartItem } from "../../lib/cart";
+import { getCart, saveCart, type CartItem } from "../../lib/cart";
 import { useAuth } from "../../stores/auth.store";
 import { useThemeStore } from "../../stores/theme.store";
 
@@ -11,6 +11,7 @@ function formatSum(value: number) {
 
 export const ProductList = () => {
   const user = useAuth((state) => state.user);
+  const isAuthenticated = useAuth((state) => state.isAuthenticated);
 
   const theme = useThemeStore((state) => state.theme);
   const isDark = theme === "dark";
@@ -35,10 +36,7 @@ export const ProductList = () => {
   }, [cart]);
 
   const totalCount = useMemo(() => {
-    return cart.reduce(
-      (sum, item) => sum + (item.quantity || 1),
-      0
-    );
+    return cart.reduce((sum, item) => sum + (item.quantity || 1), 0);
   }, [cart]);
 
   const updateCart = (nextCart: CartItem[]) => {
@@ -69,27 +67,11 @@ export const ProductList = () => {
   };
 
   const handleRemove = (id: number | string) => {
-    const nextCart = cart.filter(
-      (item) => String(item.id) !== String(id)
-    );
-
+    const nextCart = cart.filter((item) => String(item.id) !== String(id));
     updateCart(nextCart);
   };
 
-  const handleBuy = () => {
-    const confirmed = confirm(
-      "Вы действительно хотите оформить заказ?"
-    );
-
-    if (!confirmed) return;
-
-    clearCart();
-    setCart([]);
-
-    alert("Заказ успешно оформлен!");
-  };
-
-  if (!user.email) {
+  if (!isAuthenticated || !user.email) {
     return (
       <Container>
         <section
@@ -99,21 +81,15 @@ export const ProductList = () => {
               : "border-black/10 bg-white"
           }`}
         >
-          <h2 className="text-[30px] font-black">
-            Войдите в аккаунт
-          </h2>
+          <h2 className="text-[30px] font-black">Войдите в аккаунт</h2>
 
-          <p
-            className={`mt-3 max-w-[420px] text-[15px] ${
-              isDark ? "text-white/55" : "text-black/55"
-            }`}
-          >
+          <p className={`mt-3 max-w-[420px] text-[15px] ${isDark ? "text-white/55" : "text-black/55"}`}>
             Чтобы оформить заказ, сначала нужно авторизоваться.
           </p>
 
           <Link
             to="/login"
-            className="mt-6 rounded-full bg-[#ff6b00] px-8 py-4 text-[15px] font-black text-white"
+            className="mt-6 rounded-full bg-[#ff6b00] px-7 py-3 font-black text-white"
           >
             Войти
           </Link>
@@ -132,23 +108,17 @@ export const ProductList = () => {
               : "border-black/10 bg-white"
           }`}
         >
-          <h2 className="text-[32px] font-black">
-            Корзина пустая
-          </h2>
+          <h2 className="text-[30px] font-black">Корзина пустая</h2>
 
-          <p
-            className={`mt-3 max-w-[420px] text-[15px] ${
-              isDark ? "text-white/55" : "text-black/55"
-            }`}
-          >
-            Добавь любимые блюда из меню, и они появятся здесь.
+          <p className={`mt-3 max-w-[420px] text-[15px] ${isDark ? "text-white/55" : "text-black/55"}`}>
+            Добавь блюда из меню, потом оформи заказ.
           </p>
 
           <Link
             to="/menu"
-            className="mt-6 rounded-full bg-[#ff6b00] px-8 py-4 text-[15px] font-black text-white"
+            className="mt-6 rounded-full bg-[#ff6b00] px-7 py-3 font-black text-white"
           >
-            Открыть меню
+            Перейти в меню
           </Link>
         </section>
       </Container>
@@ -156,155 +126,113 @@ export const ProductList = () => {
   }
 
   return (
-    <section>
-      <Container>
-        <div className="mb-7">
-          <span className="inline-flex rounded-full bg-[#fff3e8] px-4 py-2 text-[12px] font-black text-[#ff6b00]">
-            ClickEat Cart
-          </span>
-
-          <h1 className="mt-3 text-[34px] font-black leading-tight lg:text-[48px]">
-            Корзина
-          </h1>
-
-          <p
-            className={
-              isDark
-                ? "mt-2 text-white/55"
-                : "mt-2 text-black/55"
-            }
-          >
+    <Container>
+      <section className="pb-24">
+        <div className="mb-6">
+          <h1 className="text-[34px] font-black">Корзина</h1>
+          <p className={isDark ? "text-white/55" : "text-black/55"}>
             Всего товаров: {totalCount}
           </p>
         </div>
 
-        <div className="grid gap-5 xl:grid-cols-[1fr_380px]">
-          <ul className="grid gap-4">
+        <div className="grid gap-5 lg:grid-cols-[1fr_360px]">
+          <div className="grid gap-4">
             {cart.map((item) => (
-              <li
+              <article
                 key={item.id}
-                className={`overflow-hidden rounded-[24px] border lg:rounded-[30px] ${
+                className={`flex gap-3 rounded-[28px] border p-3 ${
                   isDark
                     ? "border-[#2b1708] bg-[#101010]"
-                    : "border-black/10 bg-white shadow-[0_12px_30px_rgba(0,0,0,0.08)]"
+                    : "border-black/10 bg-white"
                 }`}
               >
-                <div className="flex gap-3 p-3 sm:gap-4 sm:p-4 lg:p-5">
-                  <img
-                    src={item.image}
-                    alt={item.title}
-                    className="h-[82px] w-[82px] shrink-0 rounded-[18px] object-cover sm:h-[95px] sm:w-[95px] lg:h-[115px] lg:w-[115px] lg:rounded-[24px]"
-                  />
+                <img
+                  src={item.image}
+                  alt={item.title}
+                  className="h-[90px] w-[90px] rounded-[22px] object-cover"
+                />
 
-                  <div className="flex min-w-0 flex-1 flex-col justify-between">
-                    <div>
-                      <h3 className="line-clamp-2 text-[15px] font-black leading-tight sm:text-[18px] lg:text-[22px]">
-                        {item.title}
-                      </h3>
+                <div className="flex flex-1 flex-col justify-between">
+                  <div>
+                    <h3 className="text-[17px] font-black">{item.title}</h3>
 
-                      <p
-                        className={`mt-1 line-clamp-1 text-[12px] sm:text-[13px] ${
-                          isDark
-                            ? "text-white/45"
-                            : "text-black/45"
-                        }`}
+                    <p className={`mt-1 text-[13px] ${isDark ? "text-white/50" : "text-black/50"}`}>
+                      {item.description}
+                    </p>
+
+                    <p className="mt-2 font-black text-[#ff6b00]">
+                      {formatSum(item.price)}
+                    </p>
+                  </div>
+
+                  <div className="mt-3 flex items-center justify-between">
+                    <div className="flex items-center gap-2 rounded-full bg-[#ff6b00] px-2 py-1.5">
+                      <button
+                        type="button"
+                        onClick={() => handleMinus(item.id)}
+                        className="flex h-7 w-7 items-center justify-center rounded-full bg-white font-black text-[#ff6b00]"
                       >
-                        {item.description || "ClickEat menu"}
-                      </p>
+                        -
+                      </button>
 
-                      <p className="mt-2 text-[14px] font-black text-[#ff6b00] sm:text-[16px] lg:text-[20px]">
-                        {formatSum(item.price)}
-                      </p>
-                    </div>
-
-                    <div className="mt-3 flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-2 rounded-full bg-[#ff6b00] px-2 py-2 lg:gap-3">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            handleMinus(item.id)
-                          }
-                          className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-[18px] font-black text-[#ff6b00] active:scale-95 lg:h-8 lg:w-8"
-                        >
-                          -
-                        </button>
-
-                        <span className="min-w-[20px] text-center text-[14px] font-black text-white lg:text-[16px]">
-                          {item.quantity}
-                        </span>
-
-                        <button
-                          type="button"
-                          onClick={() =>
-                            handlePlus(item.id)
-                          }
-                          className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-[18px] font-black text-[#ff6b00] active:scale-95 lg:h-8 lg:w-8"
-                        >
-                          +
-                        </button>
-                      </div>
+                      <b className="min-w-[20px] text-center text-white">
+                        {item.quantity}
+                      </b>
 
                       <button
                         type="button"
-                        onClick={() =>
-                          handleRemove(item.id)
-                        }
-                        className="text-[12px] font-black text-red-500 sm:text-[13px]"
+                        onClick={() => handlePlus(item.id)}
+                        className="flex h-7 w-7 items-center justify-center rounded-full bg-white font-black text-[#ff6b00]"
                       >
-                        Удалить
+                        +
                       </button>
                     </div>
+
+                    <button
+                      type="button"
+                      onClick={() => handleRemove(item.id)}
+                      className="font-black text-red-500"
+                    >
+                      Удалить
+                    </button>
                   </div>
                 </div>
-              </li>
+              </article>
             ))}
-          </ul>
+          </div>
 
           <aside
-            className={`h-fit rounded-[28px] border p-5 lg:sticky lg:top-[140px] lg:rounded-[32px] ${
+            className={`h-fit rounded-[30px] border p-5 ${
               isDark
                 ? "border-[#2b1708] bg-[#101010]"
-                : "border-black/10 bg-white shadow-[0_12px_30px_rgba(0,0,0,0.08)]"
+                : "border-black/10 bg-white"
             }`}
           >
-            <h2 className="text-[24px] font-black">
-              Итого
-            </h2>
+            <h2 className="text-[26px] font-black">Итого</h2>
 
-            <div className="mt-5 space-y-3">
-              <div className="flex justify-between text-[15px]">
-                <span
-                  className={
-                    isDark
-                      ? "text-white/55"
-                      : "text-black/55"
-                  }
-                >
-                  Товары
-                </span>
-
-                <b>{totalCount}</b>
-              </div>
-
-              <div className="flex justify-between text-[18px] lg:text-[22px]">
-                <span className="font-black">Сумма</span>
-
-                <b className="text-[#ff6b00]">
-                  {formatSum(totalPrice)}
-                </b>
-              </div>
+            <div className="mt-5 flex items-center justify-between">
+              <span className={isDark ? "text-white/55" : "text-black/55"}>
+                Товары
+              </span>
+              <b>{totalCount}</b>
             </div>
 
-            <button
-              type="button"
-              onClick={handleBuy}
-              className="mt-6 w-full rounded-full bg-[#ff6b00] py-4 text-[15px] font-black text-white transition hover:bg-[#ff7f1f]"
+            <div className="mt-3 flex items-center justify-between">
+              <span className={isDark ? "text-white/55" : "text-black/55"}>
+                Сумма
+              </span>
+              <b className="text-[#ff6b00]">{formatSum(totalPrice)}</b>
+            </div>
+
+            <Link
+              to="/checkout"
+              className="mt-6 flex w-full items-center justify-center rounded-full bg-[#ff6b00] px-6 py-4 text-[15px] font-black text-white"
             >
-              Оформить заказ
-            </button>
+              Перейти к оформлению
+            </Link>
           </aside>
         </div>
-      </Container>
-    </section>
+      </section>
+    </Container>
   );
 };

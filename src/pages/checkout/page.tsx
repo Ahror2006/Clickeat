@@ -13,12 +13,13 @@ import {
   FiTruck,
   FiUser,
 } from "react-icons/fi";
+import { createOrder, getMyOrders } from "../../lib/orders.api";
 
 import { Container } from "../../widgets/container";
 import { useAuth } from "../../stores/auth.store";
 import { useThemeStore } from "../../stores/theme.store";
 import { clearCart, getCart, saveCart, type CartItem } from "../../lib/cart";
-import { createOrder } from "../../lib/orders.api";
+
 
 type PaymentMethod = "cash" | "card" | "online";
 
@@ -136,8 +137,26 @@ export const CheckoutPage = () => {
       return;
     }
 
+
     try {
       setLoading(true);
+
+      const myOrders = await getMyOrders();
+
+      const hasActiveOrder = myOrders.some((order: any) =>
+        ["pending", "accepted", "cooking", "delivering"].includes(
+          order.status
+        )
+      );
+
+      if (hasActiveOrder) {
+        setError(
+          "У вас уже есть активный заказ. Дождитесь завершения или отмените его."
+        );
+
+        setLoading(false); 
+        return;
+      }
 
       const order = await createOrder({
         customerName: customerName.trim(),
