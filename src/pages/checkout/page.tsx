@@ -170,14 +170,25 @@ export const CheckoutPage = () => {
         })),
       });
 
-      clearCart();
-      setCart([]);
+      window.dispatchEvent(
+        new CustomEvent("toast", {
+          detail: {
+            type: "success",
+            message: "Заказ успешно оформлен 🚀",
+          },
+        })
+      );
 
-      navigate(`/order-tracking/${order.id}`);
+      setTimeout(() => {
+        clearCart();
+        setCart([]);
+
+        navigate(`/order-tracking/${order.id}`);
+      }, 1200);
     } catch (err: any) {
       setError(
         err?.response?.data?.message ||
-          "Не удалось создать заказ. Проверь backend."
+        "Не удалось создать заказ. Проверь backend."
       );
     } finally {
       setLoading(false);
@@ -186,9 +197,8 @@ export const CheckoutPage = () => {
 
   return (
     <main
-      className={`min-h-screen pb-24 pt-[120px] transition-all lg:pt-[150px] ${
-        isDark ? "bg-black text-white" : "bg-[#f6f1ea] text-[#2f3542]"
-      }`}
+      className={`min-h-screen pb-24 pt-[120px] transition-all lg:pt-[150px] ${isDark ? "bg-black text-white" : "bg-[#f6f1ea] text-[#2f3542]"
+        }`}
     >
       <Helmet>
         <title>Оформление заказа</title>
@@ -205,9 +215,8 @@ export const CheckoutPage = () => {
           </h1>
 
           <p
-            className={`mt-2 max-w-[620px] text-[15px] leading-6 ${
-              isDark ? "text-white/55" : "text-black/55"
-            }`}
+            className={`mt-2 max-w-[620px] text-[15px] leading-6 ${isDark ? "text-white/55" : "text-black/55"
+              }`}
           >
             Проверь блюда, адрес доставки и подтверди заказ.
           </p>
@@ -259,9 +268,8 @@ export const CheckoutPage = () => {
                   {cart.map((item) => (
                     <div
                       key={item.id}
-                      className={`flex gap-3 rounded-[22px] p-3 sm:gap-4 ${
-                        isDark ? "bg-[#171717]" : "bg-[#fff8f1]"
-                      }`}
+                      className={`flex gap-3 rounded-[22px] p-3 sm:gap-4 ${isDark ? "bg-[#171717]" : "bg-[#fff8f1]"
+                        }`}
                     >
                       <img
                         src={item.image}
@@ -361,11 +369,10 @@ export const CheckoutPage = () => {
                   onChange={(event) => setComment(event.target.value)}
                   placeholder="Комментарий к заказу"
                   rows={4}
-                  className={`resize-none rounded-[20px] border px-4 py-3 outline-none ${
-                    isDark
-                      ? "border-white/10 bg-[#171717] text-white placeholder:text-white/35"
-                      : "border-black/10 bg-[#fff8f1] text-[#2f3542]"
-                  }`}
+                  className={`resize-none rounded-[20px] border px-4 py-3 outline-none ${isDark
+                    ? "border-white/10 bg-[#171717] text-white placeholder:text-white/35"
+                    : "border-black/10 bg-[#fff8f1] text-[#2f3542]"
+                    }`}
                 />
               </div>
             </Card>
@@ -415,9 +422,8 @@ export const CheckoutPage = () => {
                 />
 
                 <div
-                  className={`border-t pt-4 ${
-                    isDark ? "border-white/10" : "border-black/10"
-                  }`}
+                  className={`border-t pt-4 ${isDark ? "border-white/10" : "border-black/10"
+                    }`}
                 >
                   <SummaryRow label="К оплате" value={formatSum(totalPrice)} big />
                 </div>
@@ -433,10 +439,19 @@ export const CheckoutPage = () => {
                 type="button"
                 onClick={handleSubmit}
                 disabled={loading || !cart.length}
-                className="mt-6 flex w-full items-center justify-center gap-2 rounded-[22px] bg-[#ff6b00] px-7 py-4 font-black text-white shadow-[0_18px_35px_rgba(255,107,0,0.25)] transition hover:bg-[#ff5b00] disabled:cursor-not-allowed disabled:opacity-60"
+                className="mt-6 flex w-full items-center justify-center gap-2 rounded-full bg-[#ff6b00] px-6 py-4 text-[15px] font-black text-white transition hover:scale-[1.01] disabled:cursor-not-allowed disabled:opacity-60"
               >
-                <FiSend />
-                {loading ? "Создаём заказ..." : "Подтвердить заказ"}
+                {loading ? (
+                  <>
+                    <span className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                    Создание заказа...
+                  </>
+                ) : (
+                  <>
+                    <FiSend />
+                    Оформить заказ
+                  </>
+                )}
               </button>
             </Card>
           </aside>
@@ -455,11 +470,10 @@ function Card({
 }) {
   return (
     <div
-      className={`rounded-[26px] border p-4 sm:p-5 lg:rounded-[30px] lg:p-6 ${
-        isDark
-          ? "border-[#2b1708] bg-[#101010]"
-          : "border-black/10 bg-white shadow-[0_12px_30px_rgba(0,0,0,0.08)]"
-      }`}
+      className={`rounded-[26px] border p-4 sm:p-5 lg:rounded-[30px] lg:p-6 ${isDark
+        ? "border-[#2b1708] bg-[#101010]"
+        : "border-black/10 bg-white shadow-[0_12px_30px_rgba(0,0,0,0.08)]"
+        }`}
     >
       {children}
     </div>
@@ -481,11 +495,10 @@ function Field({
 }) {
   return (
     <label
-      className={`flex items-center gap-3 rounded-[20px] border px-4 py-3 ${
-        isDark
-          ? "border-white/10 bg-[#171717] text-white"
-          : "border-black/10 bg-[#fff8f1] text-[#2f3542]"
-      }`}
+      className={`flex items-center gap-3 rounded-[20px] border px-4 py-3 ${isDark
+        ? "border-white/10 bg-[#171717] text-white"
+        : "border-black/10 bg-[#fff8f1] text-[#2f3542]"
+        }`}
     >
       <span className="shrink-0 text-[#ff6b00]">{icon}</span>
 
@@ -516,13 +529,12 @@ function PaymentButton({
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-[20px] border p-4 text-left font-black transition active:scale-[0.98] ${
-        active
-          ? "border-[#ff6b00] bg-[#ff6b00] text-white"
-          : isDark
+      className={`rounded-[20px] border p-4 text-left font-black transition active:scale-[0.98] ${active
+        ? "border-[#ff6b00] bg-[#ff6b00] text-white"
+        : isDark
           ? "border-white/10 bg-[#171717] text-white"
           : "border-black/10 bg-[#fff8f1] text-[#2f3542]"
-      }`}
+        }`}
     >
       <div className="text-[24px]">{icon}</div>
       <p className="mt-2">{label}</p>
