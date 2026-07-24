@@ -12,6 +12,7 @@ export interface User {
   password?: string;
   isBlocked?: boolean;
   createdAt?: string;
+  pointsBalance?: number;
 }
 
 interface AuthState {
@@ -36,6 +37,7 @@ const defaultUser: User = {
   phone: "",
   avatar: "",
   role: "client",
+  pointsBalance: 0,
 };
 
 function normalizeUser(user: Partial<User>): User {
@@ -55,6 +57,7 @@ function normalizeUser(user: Partial<User>): User {
     phone: user.phone || "",
     avatar: user.avatar || "",
     role,
+    pointsBalance: Math.max(0, Number(user.pointsBalance) || 0),
   };
 }
 

@@ -8,6 +8,7 @@ import {
   RiHeart3Line,
 } from "react-icons/ri";
 import { useThemeStore } from "../../stores/theme.store";
+import { useAuth } from "../../stores/auth.store";
 import { api } from "../../lib/api";
 import { getErrorMessage } from "../../lib/get-error-message";
 
@@ -23,12 +24,14 @@ type Review = {
 };
 
 export const ReviewsPage = () => {
+  const user = useAuth((state) => state.user);
   const theme = useThemeStore((state) => state.theme);
   const isDark = theme === "dark";
 
-  const [name, setName] = useState("");
+  const [name, setName] = useState(user.name || "");
   const [type, setType] = useState(types[0]);
-  const [rating, setRating] = useState(5);
+  const [rating, setRating] = useState(0);
+  const [hoverRating, setHoverRating] = useState(0);
   const [message, setMessage] = useState("");
   const [success, setSuccess] = useState("");
   const [error, setError] = useState("");
@@ -61,6 +64,11 @@ export const ReviewsPage = () => {
       return;
     }
 
+    if (!rating) {
+      setError("Выберите оценку от 1 до 5 звёзд.");
+      return;
+    }
+
     try {
       await api.post("/feedback", {
         kind: "review",
@@ -70,9 +78,9 @@ export const ReviewsPage = () => {
         message: message.trim(),
       });
 
-      setName("");
+      setName(user.name || "");
       setType(types[0]);
-      setRating(5);
+      setRating(0);
       setMessage("");
       setSuccess("Спасибо! Ваш отзыв отправлен.");
       void loadReviews();
@@ -83,16 +91,12 @@ export const ReviewsPage = () => {
 
   return (
     <main
-      className={`min-h-screen px-5 pb-20 pt-[170px] ${
-        isDark ? "bg-black text-white" : "bg-[#f6f1ea] text-[#171717]"
+      className={`min-h-screen px-4 pb-20 pt-[255px] sm:px-5 sm:pt-[265px] lg:pt-[155px] ${
+        isDark ? "bg-[radial-gradient(circle_at_15%_0%,#291205_0%,#080808_34%)] text-white" : "bg-[radial-gradient(circle_at_15%_0%,#ffe1c9_0%,#f7f4f0_36%)] text-[#171717]"
       }`}
     >
       <section
-        className={`mx-auto max-w-[1280px] rounded-[44px] border p-8 md:p-12 ${
-          isDark
-            ? "border-[#2a1608] bg-[#0f0f0f]"
-            : "border-black/5 bg-white shadow-[0_30px_90px_rgba(0,0,0,0.1)]"
-        }`}
+        className="mx-auto max-w-[1280px]"
       >
         <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr]">
           <div>
@@ -100,7 +104,7 @@ export const ReviewsPage = () => {
               ClickEat Reviews
             </span>
 
-            <h1 className="mt-6 text-[48px] font-black leading-tight md:text-[72px]">
+            <h1 className="mt-6 text-[40px] font-black leading-[0.98] tracking-[-0.04em] md:text-[68px]">
               Отзывы и <span className="text-[#ff6b00]">предложения</span>
             </h1>
 
@@ -119,8 +123,8 @@ export const ReviewsPage = () => {
           <div
             className={`rounded-[34px] border p-6 md:p-8 ${
               isDark
-                ? "border-[#2a1608] bg-black/35"
-                : "border-black/5 bg-[#fbf7f1]"
+                ? "border-white/10 bg-white/[0.045] shadow-[0_30px_90px_rgba(0,0,0,0.35)]"
+                : "border-white/80 bg-white/80 shadow-[0_30px_90px_rgba(55,31,13,0.12)] backdrop-blur"
             }`}
           >
             <h2 className="text-[34px] font-black">Оставить отзыв</h2>
@@ -153,11 +157,11 @@ export const ReviewsPage = () => {
               </div>
 
               <div>
-                <p className="mb-3 font-black">Оценка</p>
-                <div className="flex gap-2 text-[32px] text-[#ff6b00]">
+                <div className="mb-3 flex items-center justify-between"><p className="font-black">Ваша оценка</p><span className="text-sm font-bold text-[#ff6b00]">{rating ? `${rating} из 5` : "Не выбрана"}</span></div>
+                <div className="flex gap-1 text-[38px] text-[#ff6b00]" onMouseLeave={() => setHoverRating(0)}>
                   {[1, 2, 3, 4, 5].map((star) => (
-                    <button key={star} type="button" onClick={() => setRating(star)}>
-                      {star <= rating ? <RiStarFill /> : <RiStarLine />}
+                    <button key={star} type="button" aria-label={`Поставить ${star} из 5`} onMouseEnter={() => setHoverRating(star)} onFocus={() => setHoverRating(star)} onBlur={() => setHoverRating(0)} onClick={() => setRating(star)} className="rounded-xl p-1 transition hover:-translate-y-1 focus:outline-none focus:ring-2 focus:ring-[#ff6b00]/40">
+                      {star <= (hoverRating || rating) ? <RiStarFill /> : <RiStarLine />}
                     </button>
                   ))}
                 </div>

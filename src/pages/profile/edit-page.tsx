@@ -36,23 +36,30 @@ export function EditProfilePage() {
 
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const handleUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 2 * 1024 * 1024) {
-      showToast("Фото слишком большое. Лучше выбрать до 2MB.", "error");
+    if (!file.type.startsWith("image/")) {
+      showToast("Выберите файл изображения.", "error");
       return;
     }
 
-    const reader = new FileReader();
+    if (file.size > 15 * 1024 * 1024) {
+      showToast("Фото слишком большое. Максимальный размер — 15 МБ.", "error");
+      event.target.value = "";
+      return;
+    }
 
-    reader.onload = () => {
-      setAvatar(reader.result as string);
-      showToast("Аватар выбран", "success");
-    };
-
-    reader.readAsDataURL(file);
+    try {
+      const optimizedAvatar = await optimizeAvatar(file);
+      setAvatar(optimizedAvatar);
+      showToast("Фото загружено. Нажмите «Сохранить».", "success");
+    } catch {
+      showToast("Не удалось обработать изображение.", "error");
+    } finally {
+      event.target.value = "";
+    }
   };
 
   const saveLocalProfile = (nextUser: typeof user) => {
@@ -158,7 +165,7 @@ export function EditProfilePage() {
 
   return (
     <main
-      className={`min-h-screen min-w-[360px] pb-16 pt-[120px] ${
+      className={`min-h-screen min-w-[360px] pb-24 pt-6 lg:pt-10 ${
         isDark ? "bg-black text-white" : "bg-[#f6f1ea] text-[#2f3542]"
       }`}
     >
@@ -383,4 +390,39 @@ function ReadonlyField({
       </div>
     </div>
   );
+}
+
+function optimizeAvatar(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const objectUrl = URL.createObjectURL(file);
+    const image = new Image();
+
+    image.onload = () => {
+      const maxSize = 512;
+      const scale = Math.min(maxSize / image.width, maxSize / image.height, 1);
+      const width = Math.max(1, Math.round(image.width * scale));
+      const height = Math.max(1, Math.round(image.height * scale));
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+
+      const context = canvas.getContext("2d");
+      if (!context) {
+        URL.revokeObjectURL(objectUrl);
+        reject(new Error("Canvas is unavailable"));
+        return;
+      }
+
+      context.drawImage(image, 0, 0, width, height);
+      URL.revokeObjectURL(objectUrl);
+      resolve(canvas.toDataURL("image/webp", 0.82));
+    };
+
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error("Invalid image"));
+    };
+
+    image.src = objectUrl;
+  });
 }

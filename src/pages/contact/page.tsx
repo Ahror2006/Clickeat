@@ -13,6 +13,7 @@ import {
   RiArrowDownSLine,
 } from "react-icons/ri";
 import { useThemeStore } from "../../stores/theme.store";
+import { useAuth } from "../../stores/auth.store";
 
 const topics = [
   "Вопрос по заказу",
@@ -23,6 +24,7 @@ const topics = [
 ];
 
 export const ContactPage = () => {
+  const user = useAuth((state) => state.user);
   const theme = useThemeStore((state) => state.theme);
   const isDark = theme === "dark";
 
@@ -30,6 +32,8 @@ export const ContactPage = () => {
   const [filePreview, setFilePreview] = useState("");
   const [topic, setTopic] = useState("Вопрос по заказу");
   const [topicOpen, setTopicOpen] = useState(false);
+  const [name, setName] = useState(user.name || "");
+  const [contact, setContact] = useState(user.phone || user.email || "");
 
   const clearFile = () => {
     setFileName("");
@@ -38,8 +42,8 @@ export const ContactPage = () => {
 
   return (
     <main
-      className={`min-h-screen px-5 pb-20 pt-[170px] transition ${
-        isDark ? "bg-black text-white" : "bg-[#f6f1ea] text-[#171717]"
+      className={`min-h-screen px-4 pb-20 pt-[255px] transition sm:px-5 sm:pt-[265px] lg:pt-[155px] ${
+        isDark ? "bg-[radial-gradient(circle_at_15%_0%,#291205_0%,#080808_34%)] text-white" : "bg-[radial-gradient(circle_at_15%_0%,#ffe1c9_0%,#f7f4f0_36%)] text-[#171717]"
       }`}
     >
       <section
@@ -55,7 +59,7 @@ export const ContactPage = () => {
               ClickEat Contact
             </span>
 
-            <h1 className="mt-6 text-[48px] font-black leading-tight md:text-[72px]">
+            <h1 className="mt-6 text-[40px] font-black leading-[0.98] tracking-[-0.04em] md:text-[68px]">
               Связаться с <span className="text-[#ff6b00]">ClickEat</span>
             </h1>
 
@@ -108,8 +112,8 @@ export const ContactPage = () => {
               </p>
 
               <form className="mt-8 grid gap-4">
-                <Field placeholder="Ваше имя" isDark={isDark} />
-                <Field placeholder="Email или телефон" isDark={isDark} />
+                <Field placeholder="Ваше имя" value={name} onChange={setName} isDark={isDark} />
+                <Field placeholder="Email или телефон" value={contact} onChange={setContact} isDark={isDark} />
 
                 <div className="relative z-40">
                   <button
@@ -259,11 +263,13 @@ export const ContactPage = () => {
   );
 };
 
-function Field({ placeholder, isDark }: { placeholder: string; isDark: boolean }) {
+function Field({ placeholder, value, onChange, isDark }: { placeholder: string; value: string; onChange: (value: string) => void; isDark: boolean }) {
   return (
     <input
       type="text"
       placeholder={placeholder}
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
       className={`rounded-[20px] border px-5 py-4 outline-none transition focus:border-[#ff6b00] ${
         isDark
           ? "border-white/10 bg-[#111] text-white placeholder:text-white/35"

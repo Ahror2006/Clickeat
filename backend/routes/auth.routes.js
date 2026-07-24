@@ -28,6 +28,7 @@ function publicUser(user) {
     avatar: user.avatar || "",
     role: user.role || "client",
     isBlocked: Boolean(user.isBlocked),
+    pointsBalance: Math.max(0, user.pointsBalance || 0),
     createdAt: user.createdAt,
   };
 }

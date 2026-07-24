@@ -4,7 +4,8 @@ import { API_BASE_URL } from "../configs/api";
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 15_000,
+  // Render may need extra time to wake a sleeping free instance.
+  timeout: 60_000,
 });
 
 api.interceptors.request.use((config) => {

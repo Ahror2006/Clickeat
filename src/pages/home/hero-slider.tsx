@@ -45,19 +45,13 @@ export const HeroSlider = () => {
   };
 
   return (
-    <section className="home-hero-section pt-[105px] pb-6 sm:pt-[125px] sm:pb-10">
+    <section className="home-hero-section pb-6 pt-[255px] sm:pb-10 sm:pt-[265px] lg:pt-[135px]">
       <Container>
-        <div className="relative h-[210px] overflow-hidden rounded-[24px] bg-[#fff3e0] shadow-[0_14px_35px_rgba(0,0,0,0.12)] sm:h-[320px] sm:rounded-[32px] lg:h-[360px]">
+        <div className="relative aspect-[3/2] w-full overflow-hidden rounded-[24px] bg-[#fff3e0] shadow-[0_18px_50px_rgba(0,0,0,0.14)] sm:rounded-[32px] lg:aspect-auto lg:h-[440px] xl:h-[460px]">
           {banners.map((banner, index) => (
-            <img
-              key={banner.id}
-              src={banner.image}
-              alt={banner.alt}
-              className={`absolute inset-0 h-full w-full object-cover object-center transition-all duration-700 ${active === index
-                  ? "z-[2] scale-100 opacity-100"
-                  : "z-[1] scale-[1.02] opacity-0"
-                }`}
-            />
+            <div key={banner.id} className={`absolute inset-0 transition-opacity duration-700 ${active === index ? "z-[2] opacity-100" : "z-[1] opacity-0"}`}>
+              <img src={banner.image} alt={banner.alt} className="h-full w-full object-contain object-center lg:object-cover lg:object-[center_52%]" />
+            </div>
           ))}
 
           <button

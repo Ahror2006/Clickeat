@@ -868,7 +868,7 @@ html.dark-theme .featured-menu-head p {
 
 .tracking-page {
   min-height: 100vh;
-  padding: 120px 14px 110px;
+  padding: 24px 14px 110px;
   background: #f6f1ea;
   color: #2f3542;
 }
@@ -1148,7 +1148,7 @@ html.dark-theme .featured-menu-head p {
 
 @media (min-width: 1024px) {
   .tracking-page {
-    padding: 150px 32px 80px;
+    padding: 40px 32px 80px;
   }
 
   .tracking-layout {

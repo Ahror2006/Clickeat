@@ -122,6 +122,14 @@ const orderSchema = new mongoose.Schema(
       type: Number,
       required: true,
     },
+    subtotal: { type: Number, required: true, default: 0 },
+    deliveryFee: { type: Number, default: 0 },
+    promoCode: { type: String, default: "" },
+    promoDiscount: { type: Number, default: 0 },
+    pointsUsed: { type: Number, default: 0 },
+    pointsEarned: { type: Number, default: 0 },
+    loyaltyCredited: { type: Boolean, default: false },
+    pointsRefunded: { type: Boolean, default: false },
 
     paymentMethod: {
       type: String,

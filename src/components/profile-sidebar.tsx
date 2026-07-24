@@ -10,6 +10,7 @@ import {
   FiSettings,
   FiShield,
   FiStar,
+  FiTag,
   FiSun,
   FiUser,
   FiUserPlus,
@@ -208,6 +209,8 @@ export const ProfileSidebar = ({ isOpen, onClose }: ProfileSidebarProps) => {
               onClick={onClose}
             />
 
+            <SidebarLink to="/promo" icon={<FiTag />} label="Баллы и промокоды" onClick={onClose} />
+
             <SidebarLink
               to="/support"
               icon={<FiHelpCircle />}
@@ -337,14 +340,14 @@ function SidebarLink({
     <Link
       to={to}
       onClick={onClick}
-      className="group flex items-center justify-between rounded-[22px] bg-[#ff6b00] px-5 py-4 text-[15px] font-black text-white transition active:scale-[0.98]"
+      className="group flex items-center justify-between rounded-[22px] border border-[#ff6b00] bg-[#ff6b00] px-5 py-4 text-[15px] font-black text-white shadow-[0_8px_22px_rgba(255,107,0,0.16)] transition-all duration-200 hover:bg-white hover:text-[#ff6b00] hover:shadow-[0_12px_30px_rgba(255,107,0,0.24)] active:scale-[0.98]"
     >
       <span className="flex items-center gap-3">
         <span className="text-[20px]">{icon}</span>
         {label}
       </span>
 
-      <span className="transition group-hover:translate-x-1">›</span>
+      <span className="transition-transform group-hover:translate-x-1">›</span>
     </Link>
   );
 }

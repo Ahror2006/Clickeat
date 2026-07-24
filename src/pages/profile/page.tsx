@@ -38,7 +38,6 @@ function getRoleLabel(role?: string) {
   if (role === "employee") return "Сотрудник";
   return "Клиент";
 }
-
 function getRoleDescription(role?: string) {
   if (role === "admin") return "Полный доступ к админ-панели и заказам.";
   if (role === "employee") return "Доступ к заказам и смене статусов.";
@@ -74,6 +73,7 @@ export const ProfilePage = () => {
           phone: freshUser.phone || "",
           avatar: freshUser.avatar || "",
           role: freshUser.role || "client",
+          pointsBalance: freshUser.pointsBalance || 0,
         });
 
         saveAuth(token, freshUser);
@@ -112,10 +112,6 @@ export const ProfilePage = () => {
     ).length;
   }, [orders]);
 
-  const completedOrders = useMemo(() => {
-    return orders.filter((order) => order.status === "completed").length;
-  }, [orders]);
-
   const totalItems = useMemo(() => {
     return orders.reduce((sum, order) => {
       if (order.status === "cancelled") return sum;
@@ -140,7 +136,7 @@ export const ProfilePage = () => {
   if (!user.email) {
     return (
       <main
-        className={`min-h-screen pb-20 pt-[130px] ${
+        className={`min-h-screen pb-20 pt-6 lg:pt-10 ${
           isDark ? "bg-black text-white" : "bg-[#f6f1ea] text-[#2f3542]"
         }`}
       >
@@ -174,19 +170,13 @@ export const ProfilePage = () => {
 
   return (
     <main
-      className={`min-h-screen pb-24 pt-[120px] lg:pt-[150px] ${
-        isDark ? "bg-black text-white" : "bg-[#f6f1ea] text-[#2f3542]"
+      className={`min-h-screen pb-24 pt-5 lg:pt-[150px] ${
+        isDark ? "bg-[radial-gradient(circle_at_80%_0%,#241105_0%,#080808_32%)] text-white" : "bg-[radial-gradient(circle_at_80%_0%,#ffe3ce_0%,#f7f4f0_34%)] text-[#2f3542]"
       }`}
     >
       <Container>
-        <section
-          className={`overflow-hidden rounded-[34px] border ${
-            isDark
-              ? "border-[#2b1708] bg-[#101010]"
-              : "border-black/10 bg-white shadow-[0_18px_48px_rgba(0,0,0,0.08)]"
-          }`}
-        >
-          <div className="relative h-[190px] overflow-hidden sm:h-[240px]">
+        <section>
+          <div className={`relative h-[220px] overflow-hidden rounded-[30px] border sm:h-[300px] lg:rounded-[40px] ${isDark ? "border-white/10" : "border-white/80 shadow-[0_24px_70px_rgba(55,31,13,0.16)]"}`}>
             {user.avatar ? (
               <img
                 src={user.avatar}
@@ -197,21 +187,16 @@ export const ProfilePage = () => {
               <div className="h-full w-full bg-gradient-to-br from-[#ff6b00] via-[#ff9b3d] to-[#111]" />
             )}
 
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-
-            <Link
-              to="/profile/edit"
-              className="absolute right-4 top-4 z-10 inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-[13px] font-black text-[#ff6b00] shadow-xl"
-            >
-              <FiEdit2 />
-              Редактировать
-            </Link>
+            <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/20 to-transparent" />
+            <div className="absolute bottom-5 left-6 text-white sm:bottom-8 sm:left-9">
+              <span className="rounded-full border border-white/20 bg-black/25 px-4 py-2 text-[11px] font-black uppercase tracking-[0.18em] backdrop-blur-md">ClickEat member</span>
+            </div>
           </div>
 
-          <div className="relative px-5 pb-7 sm:px-8">
-            <div className="-mt-[58px] flex flex-col items-center text-center">
+          <div className="relative px-1 pb-7 sm:px-4">
+            <div className="-mt-[54px] flex flex-col items-center text-center sm:-mt-[64px] lg:ml-9 lg:flex-row lg:items-end lg:text-left">
               <div className="relative">
-                <div className="flex h-[112px] w-[112px] items-center justify-center overflow-hidden rounded-full border-4 border-[#ff6b00] bg-[#fff3e8] shadow-[0_12px_30px_rgba(0,0,0,0.22)]">
+                <div className={`flex h-[112px] w-[112px] items-center justify-center overflow-hidden rounded-[32px] border-[5px] bg-[#fff3e8] shadow-[0_16px_38px_rgba(0,0,0,0.28)] sm:h-[128px] sm:w-[128px] ${isDark ? "border-[#111]" : "border-white"}`}>
                   {user.avatar ? (
                     <img
                       src={user.avatar}
@@ -223,35 +208,16 @@ export const ProfilePage = () => {
                   )}
                 </div>
 
-                <span className="absolute bottom-2 right-1 h-5 w-5 rounded-full border-4 border-white bg-green-500" />
+                <span className="absolute -bottom-1 -right-1 h-6 w-6 rounded-full border-4 border-white bg-green-500" />
               </div>
 
-              <p className="mt-4 text-[13px] font-black opacity-50">
-                Личный кабинет
-              </p>
-
-              <h1 className="mt-1 text-[36px] font-black leading-tight">
-                {user.name || "User"}
-              </h1>
-
-              <p className="mt-2 max-w-[520px] text-[15px] leading-6 opacity-60">
-                Управляй личными данными, заказами, бонусами и промокодами.
-              </p>
-
-              <span className="mt-4 inline-flex rounded-full bg-[#ff6b00] px-5 py-2 text-[13px] font-black text-white">
-                {getRoleLabel(user.role)}
-              </span>
-
-              <Link
-                to="/profile/edit"
-                className="mt-4 inline-flex items-center gap-2 rounded-full border border-[#ff6b00] px-5 py-3 text-[14px] font-black text-[#ff6b00]"
-              >
-                <FiEdit2 />
-                Редактировать профиль
-              </Link>
+              <div className="mt-4 lg:mb-1 lg:ml-6">
+                <div className="flex flex-wrap items-center justify-center gap-3 lg:justify-start"><h1 className="text-[36px] font-black leading-tight sm:text-[44px]">{user.name || "User"}</h1><span className="rounded-full bg-[#ff6b00]/15 px-4 py-2 text-[11px] font-black uppercase tracking-wider text-[#ff6b00]">{getRoleLabel(user.role)}</span></div>
+                <p className="mt-1 max-w-[560px] text-[14px] leading-6 opacity-55 sm:text-[15px]">Заказы, бонусы и личные данные — всё важное в одном месте.</p>
+              </div>
             </div>
 
-            <div className="mt-7 grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <div className={`mt-7 grid grid-cols-2 overflow-hidden rounded-[26px] border lg:grid-cols-4 ${isDark ? "border-white/10 bg-white/[0.035]" : "border-black/[0.06] bg-white/80 shadow-[0_15px_45px_rgba(55,31,13,0.07)] backdrop-blur"}`}>
               <StatCard
                 icon={<FiShoppingBag />}
                 label="Заказы"
@@ -281,12 +247,12 @@ export const ProfilePage = () => {
               />
             </div>
 
-            <div className="mt-6 grid gap-5 xl:grid-cols-2">
+            <div className="mt-6 grid gap-5 xl:grid-cols-[1.25fr_0.75fr]">
               <div
                 className={`rounded-[28px] border p-5 ${
                   isDark
-                    ? "border-[#2b1708] bg-[#151515]"
-                    : "border-black/10 bg-[#fff8f1]"
+                    ? "border-white/10 bg-white/[0.045]"
+                    : "border-black/[0.06] bg-white/80 shadow-[0_16px_48px_rgba(55,31,13,0.07)]"
                 }`}
               >
                 <div className="mb-5 flex items-center justify-between">
@@ -301,8 +267,9 @@ export const ProfilePage = () => {
 
                   <Link
                     to="/profile/edit"
-                    className="rounded-full bg-[#ff6b00] px-4 py-2 text-[13px] font-black text-white"
+                    className="inline-flex items-center gap-2 rounded-full border border-[#ff6b00] px-4 py-2 text-[13px] font-black text-[#ff6b00] transition hover:bg-[#ff6b00] hover:text-white"
                   >
+                    <FiEdit2 />
                     Изменить
                   </Link>
                 </div>
@@ -332,8 +299,8 @@ export const ProfilePage = () => {
               <div
                 className={`rounded-[28px] border p-5 ${
                   isDark
-                    ? "border-[#2b1708] bg-[#151515]"
-                    : "border-black/10 bg-[#fff8f1]"
+                    ? "border-white/10 bg-white/[0.045]"
+                    : "border-black/[0.06] bg-white/80 shadow-[0_16px_48px_rgba(55,31,13,0.07)]"
                 }`}
               >
                 <h2 className="text-[24px] font-black">Статус аккаунта</h2>
@@ -342,26 +309,15 @@ export const ProfilePage = () => {
                   Роль определяется системой автоматически.
                 </p>
 
-                <div className="mt-5 rounded-[24px] bg-[#ff6b00]/10 p-5 text-center">
-                  <FiShield className="mx-auto text-[34px] text-[#ff6b00]" />
-
-                  <p className="mt-3 text-[13px] font-black opacity-55">
-                    Текущий статус
-                  </p>
-
-                  <h3 className="mt-1 text-[24px] font-black text-[#ff6b00]">
-                    {getRoleLabel(user.role)}
-                  </h3>
-
-                  <p className="mt-2 text-[14px] opacity-65">
-                    {getRoleDescription(user.role)}
-                  </p>
+                <div className="mt-5 flex items-center gap-4 rounded-[22px] bg-[#ff6b00]/10 p-4">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#ff6b00] text-2xl text-white"><FiShield /></div>
+                  <div><h3 className="font-black text-[#ff6b00]">{getRoleLabel(user.role)}</h3><p className="mt-1 text-[13px] leading-5 opacity-60">{getRoleDescription(user.role)}</p></div>
                 </div>
 
                 <div className="mt-5 grid gap-3">
                   <Link
                     to="/orders"
-                    className="flex items-center justify-between rounded-[20px] bg-[#ff6b00] px-5 py-4 font-black text-white"
+                    className="group flex items-center justify-between rounded-[18px] bg-[#ff6b00] px-5 py-3.5 font-black text-white transition hover:-translate-y-0.5 hover:shadow-lg"
                   >
                     Открыть заказы
                     <FiArrowRight />
@@ -369,37 +325,23 @@ export const ProfilePage = () => {
 
                   <Link
                     to="/order-history"
-                    className="flex items-center justify-between rounded-[20px] bg-[#ff6b00] px-5 py-4 font-black text-white"
+                    className={`group flex items-center justify-between rounded-[18px] border px-5 py-3.5 font-black transition hover:border-[#ff6b00] hover:text-[#ff6b00] ${isDark ? "border-white/10" : "border-black/10"}`}
                   >
                     История заказов
                     <FiArrowRight />
+                  </Link>
+
+                  <Link
+                    to="/promo"
+                    className="flex items-center justify-between rounded-[18px] bg-[#ff6b00]/10 px-5 py-3.5 font-black text-[#ff6b00] transition hover:bg-[#ff6b00] hover:text-white"
+                  >
+                    Баллы: {(user.pointsBalance || 0).toLocaleString("ru-RU")}
+                    <FiGift />
                   </Link>
                 </div>
               </div>
             </div>
 
-            <div className="mt-6 grid gap-5 sm:grid-cols-3">
-              <SmallCard
-                title="Активные заказы"
-                value={String(activeOrders)}
-                text="Заказы, которые ещё не закрыты."
-                isDark={isDark}
-              />
-
-              <SmallCard
-                title="Завершённые"
-                value={String(completedOrders)}
-                text="Доставленные заказы."
-                isDark={isDark}
-              />
-
-              <SmallCard
-                title="Промокоды"
-                value="0"
-                text="Пока нет активных промокодов."
-                isDark={isDark}
-              />
-            </div>
           </div>
         </section>
       </Container>
@@ -420,13 +362,9 @@ function StatCard({
 }) {
   return (
     <div
-      className={`rounded-[24px] border p-4 ${
-        isDark
-          ? "border-[#2b1708] bg-[#151515]"
-          : "border-black/10 bg-[#fff8f1]"
-      }`}
+      className={`relative p-4 after:absolute after:bottom-[20%] after:right-0 after:h-[60%] after:w-px after:bg-current after:opacity-10 last:after:hidden ${isDark ? "" : ""}`}
     >
-      <div className="flex h-12 w-12 items-center justify-center rounded-[16px] bg-[#ff6b00] text-[24px] text-white">
+      <div className="flex h-10 w-10 items-center justify-center rounded-[14px] bg-[#ff6b00]/12 text-[20px] text-[#ff6b00]">
         {icon}
       </div>
 
@@ -451,7 +389,7 @@ function InfoRow({
   return (
     <div
       className={`mb-3 flex items-center gap-4 rounded-[20px] p-4 ${
-        isDark ? "bg-[#101010]" : "bg-white"
+        isDark ? "bg-black/30" : "bg-[#f8f5f1]"
       }`}
     >
       <div className="flex h-11 w-11 items-center justify-center rounded-[14px] bg-[#ff6b00]/15 text-[22px] text-[#ff6b00]">
@@ -466,28 +404,3 @@ function InfoRow({
   );
 }
 
-function SmallCard({
-  title,
-  value,
-  text,
-  isDark,
-}: {
-  title: string;
-  value: string;
-  text: string;
-  isDark: boolean;
-}) {
-  return (
-    <div
-      className={`rounded-[24px] border p-5 ${
-        isDark
-          ? "border-[#2b1708] bg-[#151515]"
-          : "border-black/10 bg-[#fff8f1]"
-      }`}
-    >
-      <p className="text-[14px] font-black opacity-55">{title}</p>
-      <h3 className="mt-2 text-[30px] font-black text-[#ff6b00]">{value}</h3>
-      <p className="mt-2 text-[13px] leading-5 opacity-55">{text}</p>
-    </div>
-  );
-}

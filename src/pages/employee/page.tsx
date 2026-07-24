@@ -114,7 +114,7 @@ export const EmployeePage = () => {
 
   return (
     <main
-      className={`min-h-screen pb-24 pt-[120px] lg:pt-[150px] ${
+      className={`min-h-screen pb-24 pt-6 lg:pt-10 ${
         isDark ? "bg-black text-white" : "bg-[#f6f1ea] text-[#2f3542]"
       }`}
     >

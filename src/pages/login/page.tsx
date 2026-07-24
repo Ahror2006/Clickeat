@@ -7,6 +7,7 @@ import {
   type KeyboardEvent,
 } from "react";
 import { Link, useNavigate } from "react-router";
+import { FiEye, FiEyeOff } from "react-icons/fi";
 import { useAuth } from "../../stores/auth.store";
 import { api } from "../../lib/api";
 import { saveAuth } from "../../lib/auth";
@@ -27,6 +28,7 @@ export const LoginPage = () => {
 
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const focusNext = (
     event: KeyboardEvent<HTMLInputElement>,
@@ -159,15 +161,26 @@ export const LoginPage = () => {
                 autoComplete="email"
               />
 
-              <AuthInput
-                ref={passwordRef}
-                type="password"
-                placeholder="Пароль"
-                value={form.password}
-                onChange={handleChange("password")}
-                onKeyDown={(event) => focusNext(event, form.password)}
-                autoComplete="current-password"
-              />
+              <div className="auth-password-field">
+                <AuthInput
+                  ref={passwordRef}
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Пароль"
+                  value={form.password}
+                  onChange={handleChange("password")}
+                  onKeyDown={(event) => focusNext(event, form.password)}
+                  autoComplete="current-password"
+                />
+                <button
+                  type="button"
+                  className="auth-password-toggle"
+                  onClick={() => setShowPassword((value) => !value)}
+                  aria-label={showPassword ? "Скрыть пароль" : "Показать пароль"}
+                  aria-pressed={showPassword}
+                >
+                  {showPassword ? <FiEyeOff /> : <FiEye />}
+                </button>
+              </div>
 
               {error && <div className="auth-error">{error}</div>}
 

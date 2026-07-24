@@ -1,5 +1,7 @@
 import express from "express";
 import { Order } from "../models/Order.js";
+import { User } from "../models/User.js";
+import { calculateEarnedPoints, calculateQuote, PROMOCODES } from "../lib/loyalty.js";
 import { protect, allowRoles } from "../middleware/auth.middleware.js";
 import {
   emitOrderCreated,
@@ -25,6 +27,12 @@ function publicOrder(order) {
     courierLocation: order.courierLocation,
     items: order.items,
     totalPrice: order.totalPrice,
+    subtotal: order.subtotal,
+    deliveryFee: order.deliveryFee,
+    promoCode: order.promoCode,
+    promoDiscount: order.promoDiscount,
+    pointsUsed: order.pointsUsed,
+    pointsEarned: order.pointsEarned,
     paymentMethod: order.paymentMethod,
     status: order.status,
     estimatedDeliveryTime: order.estimatedDeliveryTime,
@@ -33,6 +41,16 @@ function publicOrder(order) {
     updatedAt: order.updatedAt,
   };
 }
+
+router.get("/promocodes/available", protect, (req, res) => res.json({ success: true, pointsBalance: req.user.pointsBalance || 0, promocodes: PROMOCODES }));
+
+router.post("/quote", protect, (req, res) => {
+  try {
+    return res.json({ success: true, quote: calculateQuote({ ...req.body, pointsBalance: req.user.pointsBalance || 0 }) });
+  } catch (error) {
+    return res.status(400).json({ success: false, message: error.message });
+  }
+});
 
 // CLIENT: create order
 router.post("/", protect, async (req, res) => {
@@ -45,7 +63,8 @@ router.post("/", protect, async (req, res) => {
       restaurantName,
       restaurantLocation,
       items,
-      totalPrice,
+      promoCode,
+      pointsToUse,
       paymentMethod,
       comment,
     } = req.body;
@@ -77,7 +96,22 @@ router.post("/", protect, async (req, res) => {
       });
     }
 
-    const order = await Order.create({
+    const quote = calculateQuote({ items, promoCode, pointsToUse, pointsBalance: req.user.pointsBalance || 0 });
+    if (!quote.items.length) return res.status(400).json({ success: false, message: "В заказе нет корректных товаров" });
+
+    let chargedPoints = 0;
+    if (quote.pointsDiscount > 0) {
+      const updated = await User.findOneAndUpdate(
+        { _id: req.user._id, pointsBalance: { $gte: quote.pointsDiscount } },
+        { $inc: { pointsBalance: -quote.pointsDiscount } },
+        { new: true }
+      );
+      if (!updated) return res.status(409).json({ success: false, message: "Баланс баллов изменился. Пересчитайте заказ." });
+      chargedPoints = quote.pointsDiscount;
+    }
+
+    let order;
+    try { order = await Order.create({
       user: req.user._id,
       customerName,
       customerPhone,
@@ -100,12 +134,20 @@ router.post("/", protect, async (req, res) => {
         lng: restaurantLocation?.lng ?? 69.240562,
         address: "Courier is waiting near restaurant",
       },
-      items,
-      totalPrice,
+      items: quote.items,
+      subtotal: quote.subtotal,
+      deliveryFee: quote.deliveryFee,
+      promoCode: quote.promoCode,
+      promoDiscount: quote.promoDiscount,
+      pointsUsed: quote.pointsDiscount,
+      totalPrice: quote.totalPrice,
       paymentMethod: paymentMethod || "cash",
       comment: comment || "",
       status: "pending",
-    });
+    }); } catch (error) {
+      if (chargedPoints) await User.findByIdAndUpdate(req.user._id, { $inc: { pointsBalance: chargedPoints } });
+      throw error;
+    }
 
     const responseOrder = publicOrder(order);
     emitOrderCreated(responseOrder);
@@ -114,6 +156,7 @@ router.post("/", protect, async (req, res) => {
       success: true,
       message: "Заказ создан",
       order: responseOrder,
+      pointsBalance: Math.max(0, (req.user.pointsBalance || 0) - chargedPoints),
     });
   } catch (error) {
     return res.status(500).json({
@@ -173,6 +216,11 @@ router.patch("/:id/cancel", protect, async (req, res) => {
     }
 
     order.status = "cancelled";
+    if (order.pointsUsed > 0 && !order.pointsRefunded) {
+      const claimed = await Order.updateOne({ _id: order._id, pointsRefunded: false }, { $set: { pointsRefunded: true } });
+      if (claimed.modifiedCount) await User.findByIdAndUpdate(order.user, { $inc: { pointsBalance: order.pointsUsed } });
+      order.pointsRefunded = true;
+    }
     await order.save();
 
     const responseOrder = publicOrder(order);
@@ -291,6 +339,18 @@ router.patch(
       }
 
       order.status = status;
+      if (status === "cancelled" && order.pointsUsed > 0 && !order.pointsRefunded) {
+        const claimed = await Order.updateOne({ _id: order._id, pointsRefunded: false }, { $set: { pointsRefunded: true } });
+        if (claimed.modifiedCount) await User.findByIdAndUpdate(order.user, { $inc: { pointsBalance: order.pointsUsed } });
+        order.pointsRefunded = true;
+      }
+      if (status === "completed" && !order.loyaltyCredited) {
+        const earned = calculateEarnedPoints(order.totalPrice);
+        order.pointsEarned = earned.points;
+        order.loyaltyCredited = true;
+        const claimed = await Order.updateOne({ _id: order._id, loyaltyCredited: false }, { $set: { loyaltyCredited: true, pointsEarned: earned.points } });
+        if (claimed.modifiedCount && earned.points > 0) await User.findByIdAndUpdate(order.user, { $inc: { pointsBalance: earned.points } });
+      }
       await order.save();
 
       const responseOrder = publicOrder(order);

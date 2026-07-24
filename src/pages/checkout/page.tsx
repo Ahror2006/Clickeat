@@ -14,6 +14,8 @@ import {
 } from "react-icons/fi";
 import {
   createOrder,
+  getOrderQuote,
+  type OrderQuote,
   getMyOrders,
   type OrderSummary,
 } from "../../lib/orders.api";
@@ -41,6 +43,7 @@ export const CheckoutPage = () => {
 
   const user = useAuth((state) => state.user);
   const isAuthenticated = useAuth((state) => state.isAuthenticated);
+  const updateProfile = useAuth((state) => state.updateProfile);
 
   const theme = useThemeStore((state) => state.theme);
   const isDark = theme === "dark";
@@ -55,6 +58,10 @@ export const CheckoutPage = () => {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [promoCode, setPromoCode] = useState("");
+  const [pointsToUse, setPointsToUse] = useState(0);
+  const [quote, setQuote] = useState<OrderQuote | null>(null);
+  const [quoteLoading, setQuoteLoading] = useState(false);
 
   const deliveryPrice = cart.length ? 12000 : 0;
 
@@ -66,6 +73,16 @@ export const CheckoutPage = () => {
   }, [cart]);
 
   const totalPrice = subtotal + deliveryPrice;
+  const orderItems = useMemo(() => cart.map((item) => ({ name: item.title, price: item.price, quantity: item.quantity || 1, image: item.image || "" })), [cart]);
+
+  const calculateDiscounts = async () => {
+    try {
+      setQuoteLoading(true); setError("");
+      setQuote(await getOrderQuote({ items: orderItems, promoCode: promoCode.trim(), pointsToUse }));
+    } catch (error: unknown) {
+      setQuote(null); setError(getErrorMessage(error, "Не удалось рассчитать скидку."));
+    } finally { setQuoteLoading(false); }
+  };
 
   const totalCount = useMemo(() => {
     return cart.reduce((sum, item) => sum + (item.quantity || 1), 0);
@@ -183,15 +200,12 @@ export const CheckoutPage = () => {
 
         paymentMethod,
         comment: comment.trim(),
-        totalPrice,
+        promoCode: promoCode.trim(),
+        pointsToUse,
 
-        items: cart.map((item) => ({
-          name: item.title,
-          price: item.price,
-          quantity: item.quantity || 1,
-          image: item.image || "",
-        })),
+        items: orderItems,
       });
+      updateProfile({ pointsBalance: order.pointsBalance });
 
       window.dispatchEvent(
         new CustomEvent("toast", {
@@ -217,7 +231,7 @@ export const CheckoutPage = () => {
 
   return (
     <main
-      className={`min-h-screen pb-24 pt-[120px] transition-all lg:pt-[150px] ${isDark ? "bg-black text-white" : "bg-[#f6f1ea] text-[#2f3542]"
+      className={`min-h-screen pb-24 pt-6 transition-all lg:pt-10 ${isDark ? "bg-black text-white" : "bg-[#f6f1ea] text-[#2f3542]"
         }`}
     >
       <title>Оформление заказа</title>
@@ -396,6 +410,20 @@ export const CheckoutPage = () => {
             </Card>
 
             <Card isDark={isDark}>
+              <h2 className="text-[22px] font-black lg:text-[28px]">Промокод и баллы</h2>
+              <p className="mt-1 text-[14px] opacity-55">Ваш баланс: {(user.pointsBalance || 0).toLocaleString("ru-RU")} баллов</p>
+              <div className="mt-5 grid gap-3 sm:grid-cols-[1fr_auto]">
+                <input value={promoCode} onChange={(event) => setPromoCode(event.target.value.toUpperCase())} placeholder="Введите промокод" className={`rounded-[20px] border px-4 py-3 outline-none ${isDark ? "border-white/10 bg-[#171717]" : "border-black/10 bg-[#fff8f1]"}`} />
+                <button type="button" onClick={calculateDiscounts} disabled={quoteLoading || !cart.length} className="rounded-full bg-[#ff6b00] px-6 py-3 font-black text-white disabled:opacity-50">{quoteLoading ? "Считаем..." : "Применить"}</button>
+              </div>
+              <div className="mt-3 flex flex-wrap items-center gap-3">
+                <input type="number" min={0} max={user.pointsBalance || 0} value={pointsToUse} onChange={(event) => setPointsToUse(Math.max(0, Number(event.target.value) || 0))} className={`min-w-0 flex-1 rounded-[20px] border px-4 py-3 outline-none ${isDark ? "border-white/10 bg-[#171717]" : "border-black/10 bg-[#fff8f1]"}`} />
+                <button type="button" onClick={() => setPointsToUse(user.pointsBalance || 0)} className="font-black text-[#ff6b00]">Использовать все</button>
+              </div>
+              {quote && <p className="mt-4 text-sm font-bold text-green-600">Скидка: {formatSum(quote.promoDiscount + quote.pointsDiscount)} · после завершения получите ≈ {quote.estimatedPoints} баллов</p>}
+            </Card>
+
+            <Card isDark={isDark}>
               <h2 className="text-[22px] font-black lg:text-[28px]">
                 Способ оплаты
               </h2>
@@ -438,12 +466,14 @@ export const CheckoutPage = () => {
                   label="Доставка"
                   value={formatSum(deliveryPrice)}
                 />
+                {(quote?.promoDiscount || 0) > 0 && <SummaryRow label="Промокод" value={`− ${formatSum(quote!.promoDiscount)}`} />}
+                {(quote?.pointsDiscount || 0) > 0 && <SummaryRow label="Баллы" value={`− ${formatSum(quote!.pointsDiscount)}`} />}
 
                 <div
                   className={`border-t pt-4 ${isDark ? "border-white/10" : "border-black/10"
                     }`}
                 >
-                  <SummaryRow label="К оплате" value={formatSum(totalPrice)} big />
+                  <SummaryRow label="К оплате" value={formatSum(quote?.totalPrice ?? totalPrice)} big />
                 </div>
               </div>
 
