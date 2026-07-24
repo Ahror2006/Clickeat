@@ -8,6 +8,7 @@ import {
   type KeyboardEvent,
 } from "react";
 import { Link, useNavigate } from "react-router";
+import { FiEye, FiEyeOff } from "react-icons/fi";
 import { useAuth } from "../../stores/auth.store";
 import { api } from "../../lib/api";
 import { saveAuth } from "../../lib/auth";
@@ -36,6 +37,8 @@ export const RegisterPage = () => {
 
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const passwordStatus = useMemo(() => {
     if (!form.password) return "empty";
@@ -244,17 +247,28 @@ export const RegisterPage = () => {
                 />
               </div>
 
-              <AuthInput
-                ref={passwordRef}
-                type="password"
-                placeholder="Пароль"
-                value={form.password}
-                onChange={handleChange("password")}
-                onKeyDown={(event) =>
-                  focusNext(event, form.password, confirmPasswordRef)
-                }
-                autoComplete="new-password"
-              />
+              <div className="auth-password-field">
+                <AuthInput
+                  ref={passwordRef}
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Пароль"
+                  value={form.password}
+                  onChange={handleChange("password")}
+                  onKeyDown={(event) =>
+                    focusNext(event, form.password, confirmPasswordRef)
+                  }
+                  autoComplete="new-password"
+                />
+                <button
+                  type="button"
+                  className="auth-password-toggle"
+                  onClick={() => setShowPassword((value) => !value)}
+                  aria-label={showPassword ? "Скрыть пароль" : "Показать пароль"}
+                  aria-pressed={showPassword}
+                >
+                  {showPassword ? <FiEyeOff /> : <FiEye />}
+                </button>
+              </div>
 
               {passwordStatus === "short" && (
                 <p className="auth-hint-red">Минимум 8 символов</p>
@@ -264,15 +278,28 @@ export const RegisterPage = () => {
                 <p className="auth-hint-green">Пароль подходит</p>
               )}
 
-              <AuthInput
-                ref={confirmPasswordRef}
-                type="password"
-                placeholder="Подтвердите пароль"
-                value={form.confirmPassword}
-                onChange={handleChange("confirmPassword")}
-                onKeyDown={(event) => focusNext(event, form.confirmPassword)}
-                autoComplete="new-password"
-              />
+              <div className="auth-password-field">
+                <AuthInput
+                  ref={confirmPasswordRef}
+                  type={showConfirmPassword ? "text" : "password"}
+                  placeholder="Подтвердите пароль"
+                  value={form.confirmPassword}
+                  onChange={handleChange("confirmPassword")}
+                  onKeyDown={(event) => focusNext(event, form.confirmPassword)}
+                  autoComplete="new-password"
+                />
+                <button
+                  type="button"
+                  className="auth-password-toggle"
+                  onClick={() => setShowConfirmPassword((value) => !value)}
+                  aria-label={
+                    showConfirmPassword ? "Скрыть пароль" : "Показать пароль"
+                  }
+                  aria-pressed={showConfirmPassword}
+                >
+                  {showConfirmPassword ? <FiEyeOff /> : <FiEye />}
+                </button>
+              </div>
 
               {confirmStatus === "mismatch" && (
                 <p className="auth-hint-orange">Пароли не совпадают</p>

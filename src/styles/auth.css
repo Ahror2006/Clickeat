@@ -246,3 +246,37 @@ body,
     font-size: 38px;
   }
 }
+
+.auth-password-field {
+  position: relative;
+}
+
+.auth-password-field .auth-input {
+  padding-right: 54px;
+}
+
+.auth-password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 16px;
+  display: inline-flex;
+  width: 36px;
+  height: 36px;
+  align-items: center;
+  justify-content: center;
+  transform: translateY(-50%);
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #687386;
+  cursor: pointer;
+  font-size: 21px;
+  transition: color 0.2s ease, background 0.2s ease;
+}
+
+.auth-password-toggle:hover,
+.auth-password-toggle:focus-visible {
+  background: #fff0e5;
+  color: #ff6b00;
+  outline: none;
+}

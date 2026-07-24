@@ -294,7 +294,7 @@ export default function AdminPage() {
   };
 
   return (
-    <section className="px-10 pb-16">
+    <section className="px-4 pb-24 pt-6 sm:px-10 lg:pt-10">
       <div className="mx-auto max-w-[1480px]">
         <div className="mb-10 flex items-end justify-between gap-6">
           <div>

@@ -9,6 +9,7 @@ const RestaurantPage = lazy(() => import("./pages/restaurant/page").then((m) => 
 const CartPage = lazy(() => import("./pages/cart/page").then((m) => ({ default: m.CartPage })));
 const OrderHistoryPage = lazy(() => import("./pages/order-history/page").then((m) => ({ default: m.OrderHistoryPage })));
 const ProfilePage = lazy(() => import("./pages/profile/page").then((m) => ({ default: m.ProfilePage })));
+const PromoPage = lazy(() => import("./pages/promo/page").then((m) => ({ default: m.PromoPage })));
 const EditProfilePage = lazy(() => import("./pages/profile/edit-page").then((m) => ({ default: m.EditProfilePage })));
 const LoginPage = lazy(() => import("./pages/login/page").then((m) => ({ default: m.LoginPage })));
 const RegisterPage = lazy(() => import("./pages/register/page").then((m) => ({ default: m.RegisterPage })));
@@ -52,6 +53,7 @@ export const router = createBrowserRouter([
           { path: "order-history", Component: OrderHistoryPage },
           { path: "profile", Component: ProfilePage },
           { path: "profile/edit", Component: EditProfilePage },
+          { path: "promo", Component: PromoPage },
           { path: "checkout", Component: CheckoutPage },
           { path: "order-tracking/:id", Component: OrderTrackingPage },
         ],
