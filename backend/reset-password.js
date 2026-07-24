@@ -5,29 +5,35 @@ import { User } from "./models/User.js";
 
 dotenv.config();
 
-const email = "admin2@clickeat.uz";
-const newPassword = "11110000";
+const email = process.env.RESET_USER_EMAIL?.toLowerCase().trim();
+const newPassword = process.env.RESET_USER_PASSWORD;
+const role = process.env.RESET_USER_ROLE || "client";
+
+if (!process.env.MONGO_URI || !email || !newPassword) {
+  console.error(
+    "MONGO_URI, RESET_USER_EMAIL and RESET_USER_PASSWORD are required"
+  );
+  process.exit(1);
+}
+
+if (newPassword.length < 8) {
+  console.error("RESET_USER_PASSWORD must contain at least 8 characters");
+  process.exit(1);
+}
+
+if (!["client", "employee", "admin"].includes(role)) {
+  console.error("RESET_USER_ROLE must be client, employee or admin");
+  process.exit(1);
+}
 
 await mongoose.connect(process.env.MONGO_URI);
-console.log("DB:", mongoose.connection.name);
-console.log("HOST:", mongoose.connection.host);
-
-const users = await User.find().select("+password");
-console.log(
-  users.map((user) => ({
-    email: user.email,
-    role: user.role,
-    hasPasswordHash: user.password?.startsWith("$2b$"),
-  }))
-);
-
 const hashedPassword = await bcrypt.hash(newPassword, 10);
 
 const user = await User.findOneAndUpdate(
-  { email: email.toLowerCase().trim() },
+  { email },
   {
     password: hashedPassword,
-    role: "employee",
+    role,
     isBlocked: false,
   },
   { new: true }

@@ -1,4 +1,3 @@
-import { Helmet } from "react-helmet";
 import { ProductList } from "./product-list";
 import { useThemeStore } from "../../stores/theme.store";
 
@@ -12,9 +11,7 @@ export const CartPage = () => {
         isDark ? "bg-black text-white" : "bg-[#f6f1ea] text-[#2f3542]"
       }`}
     >
-      <Helmet>
-        <title>Корзина</title>
-      </Helmet>
+      <title>Корзина</title>
 
       <ProductList />
     </main>

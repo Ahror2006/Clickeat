@@ -11,6 +11,8 @@ import {
   RiBankCardLine,
 } from "react-icons/ri";
 import { useThemeStore } from "../../stores/theme.store";
+import { api } from "../../lib/api";
+import { getErrorMessage } from "../../lib/get-error-message";
 
 const complaintTypes = [
   "Проблема с доставкой",
@@ -20,18 +22,6 @@ const complaintTypes = [
   "Ошибка в заказе",
   "Другое",
 ];
-
-type Complaint = {
-  id: number;
-  name: string;
-  contact: string;
-  type: string;
-  message: string;
-  fileName?: string;
-  filePreview?: string;
-  createdAt: string;
-  status: "new";
-};
 
 export const ComplaintsPage = () => {
   const theme = useThemeStore((state) => state.theme);
@@ -58,6 +48,11 @@ export const ComplaintsPage = () => {
   const handleFile = (file?: File) => {
     if (!file) return;
 
+    if (file.size > 2 * 1024 * 1024) {
+      setError("Размер файла не должен превышать 2 МБ.");
+      return;
+    }
+
     setFileName(file.name);
 
     const reader = new FileReader();
@@ -65,7 +60,7 @@ export const ComplaintsPage = () => {
     reader.readAsDataURL(file);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     setError("");
     setSuccess("");
 
@@ -84,32 +79,26 @@ export const ComplaintsPage = () => {
       return;
     }
 
-    const complaint: Complaint = {
-      id: Date.now(),
-      name: name.trim(),
-      contact: contact.trim(),
-      type,
-      message: message.trim(),
-      fileName,
-      filePreview,
-      createdAt: new Date().toLocaleString("ru-RU"),
-      status: "new",
-    };
+    try {
+      await api.post("/feedback", {
+        kind: "complaint",
+        name: name.trim(),
+        contact: contact.trim(),
+        category: type,
+        message: message.trim(),
+        fileName,
+        fileData: filePreview,
+      });
 
-    const saved = localStorage.getItem("clickEatComplaints");
-    const complaints: Complaint[] = saved ? JSON.parse(saved) : [];
-
-    localStorage.setItem(
-      "clickEatComplaints",
-      JSON.stringify([complaint, ...complaints])
-    );
-
-    setSuccess("Жалоба отправлена. Мы проверим ситуацию и свяжемся с вами.");
-    setName("");
-    setContact("");
-    setMessage("");
-    setType(complaintTypes[0]);
-    clearFile();
+      setSuccess("Жалоба отправлена. Мы проверим ситуацию и свяжемся с вами.");
+      setName("");
+      setContact("");
+      setMessage("");
+      setType(complaintTypes[0]);
+      clearFile();
+    } catch (submitError: unknown) {
+      setError(getErrorMessage(submitError, "Не удалось отправить жалобу."));
+    }
   };
 
   return (

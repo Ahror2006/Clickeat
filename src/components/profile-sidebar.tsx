@@ -11,7 +11,6 @@ import {
   FiShield,
   FiStar,
   FiSun,
-  FiTag,
   FiUser,
   FiUserPlus,
   FiX,
@@ -206,13 +205,6 @@ export const ProfileSidebar = ({ isOpen, onClose }: ProfileSidebarProps) => {
               to="/order-history"
               icon={<FiClock />}
               label="История заказов"
-              onClick={onClose}
-            />
-
-            <SidebarLink
-              to="/promo"
-              icon={<FiTag />}
-              label="Промокоды"
               onClick={onClose}
             />
 

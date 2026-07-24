@@ -27,13 +27,25 @@ export type CreateOrderPayload = {
     address: string;
   };
 
-  items: any[];
+  items: OrderItem[];
 
   totalPrice: number;
 
   paymentMethod: "cash" | "card" | "online";
 
   comment?: string;
+};
+
+export type OrderItem = {
+  name: string;
+  price: number;
+  quantity: number;
+  image?: string;
+};
+
+export type OrderSummary = {
+  id: string;
+  status: OrderStatus;
 };
 
 export async function createOrder(payload: CreateOrderPayload) {

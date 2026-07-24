@@ -7,11 +7,11 @@ import {
   type KeyboardEvent,
 } from "react";
 import { Link, useNavigate } from "react-router";
-import { Helmet } from "react-helmet";
 import { useAuth } from "../../stores/auth.store";
 import { api } from "../../lib/api";
 import { saveAuth } from "../../lib/auth";
-import AuthBg from "../../assets/auth-bg.png";
+import { getErrorMessage } from "../../lib/get-error-message";
+import AuthBg from "../../assets/auth-bg.webp";
 
 export const LoginPage = () => {
   const navigate = useNavigate();
@@ -114,8 +114,8 @@ export const LoginPage = () => {
       }
 
       navigate("/");
-    } catch (err: any) {
-      setError(err?.response?.data?.message || "Неверный email или пароль");
+    } catch (error: unknown) {
+      setError(getErrorMessage(error, "Неверный email или пароль"));
     } finally {
       setLoading(false);
     }
@@ -128,9 +128,7 @@ export const LoginPage = () => {
 
   return (
     <div className="auth-page">
-      <Helmet>
-        <title>Вход</title>
-      </Helmet>
+      <title>Вход</title>
 
       <div
         className="auth-viewport relative overflow-hidden bg-cover bg-center"

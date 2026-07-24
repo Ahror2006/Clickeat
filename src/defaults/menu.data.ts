@@ -1,44 +1,44 @@
-import dragon from "../assets/rolls/dragon.png";
-import greenDragon from "../assets/rolls/green-dragon.png";
-import imperator from "../assets/rolls/imperator.png";
-import tiger from "../assets/rolls/tiger.png";
-import tuna from "../assets/rolls/tuna.png";
-import philadelphia from "../assets/rolls/philadelphia.png";
+import dragon from "../assets/rolls/dragon.webp";
+import greenDragon from "../assets/rolls/green-dragon.webp";
+import imperator from "../assets/rolls/imperator.webp";
+import tiger from "../assets/rolls/tiger.webp";
+import tuna from "../assets/rolls/tuna.webp";
+import philadelphia from "../assets/rolls/philadelphia.webp";
 
-import margherita from "../assets/pizza/margherita-premium.png";
-import pepperoni from "../assets/pizza/pepperoni-classic.png";
-import fourCheese from "../assets/pizza/four-cheese.png";
-import bbqChickenPizza from "../assets/pizza/bbq-chicken.png";
-import meatDeluxe from "../assets/pizza/meat-deluxe.png";
-import mexicanPizza from "../assets/pizza/mexican-hot.png";
+import margherita from "../assets/pizza/margherita-premium.webp";
+import pepperoni from "../assets/pizza/pepperoni-classic.webp";
+import fourCheese from "../assets/pizza/four-cheese.webp";
+import bbqChickenPizza from "../assets/pizza/bbq-chicken.webp";
+import meatDeluxe from "../assets/pizza/meat-deluxe.webp";
+import mexicanPizza from "../assets/pizza/mexican-hot.webp";
 
-import blackAngus from "../assets/fast_food/black-angus-burger.png";
-import doubleSmash from "../assets/fast_food/double-smash-burger.png";
-import crispyChicken from "../assets/fast_food/crispy-chicken-deluxe.png";
-import bbqBacon from "../assets/fast_food/bbq-bacon-burger.png";
-import loadedFries from "../assets/fast_food/loaded-cheese-fries.png";
-import hotMexican from "../assets/fast_food/hot-mexican-burger.png";
+import blackAngus from "../assets/fast_food/black-angus-burger.webp";
+import doubleSmash from "../assets/fast_food/double-smash-burger.webp";
+import crispyChicken from "../assets/fast_food/crispy-chicken-deluxe.webp";
+import bbqBacon from "../assets/fast_food/bbq-bacon-burger.webp";
+import loadedFries from "../assets/fast_food/loaded-cheese-fries.webp";
+import hotMexican from "../assets/fast_food/hot-mexican-burger.webp";
 
-import plov from "../assets/home_food/plov-premium.png";
-import kazanKebab from "../assets/home_food/kazan-kebab-deluxe.png";
-import lagman from "../assets/home_food/lagman-signature.png";
-import manty from "../assets/home_food/manty.png";
-import stew from "../assets/home_food/stew-classic.png";
-import chickenPuree from "../assets/home_food/chicken-puree.png";
+import plov from "../assets/home_food/plov-premium.webp";
+import kazanKebab from "../assets/home_food/kazan-kebab-deluxe.webp";
+import lagman from "../assets/home_food/lagman-signature.webp";
+import manty from "../assets/home_food/manty.webp";
+import stew from "../assets/home_food/stew-classic.webp";
+import chickenPuree from "../assets/home_food/chicken-puree.webp";
 
-import tokyoShoyuRamen from "../assets/ramen/Tokyo Shoyu Ramen.png";
-import spicyMisoRamen from "../assets/ramen/Spicy Miso Ramen.png";
-import blackGarlicTonkotsu from "../assets/ramen/Black Garlic Tonkotsu.png";
-import seafoodRamen from "../assets/ramen/Seafood Ramen.png";
-import chickenTeriyakiRamen from "../assets/ramen/Chicken Teriyaki Ramen.png";
-import neonFireRamen from "../assets/ramen/Neon Fire Ramen.png";
+import tokyoShoyuRamen from "../assets/ramen/Tokyo Shoyu Ramen.webp";
+import spicyMisoRamen from "../assets/ramen/Spicy Miso Ramen.webp";
+import blackGarlicTonkotsu from "../assets/ramen/Black Garlic Tonkotsu.webp";
+import seafoodRamen from "../assets/ramen/Seafood Ramen.webp";
+import chickenTeriyakiRamen from "../assets/ramen/Chicken Teriyaki Ramen.webp";
+import neonFireRamen from "../assets/ramen/Neon Fire Ramen.webp";
 
-import bbqBeefRibs from "../assets/grill/BBQ Beef Ribs.png";
-import clickEatInfernoGrill from "../assets/grill/ClickEat Inferno Grill.png";
-import fireSteakGrill from "../assets/grill/Fire Steak Grill.png";
-import mixGrillPlate from "../assets/grill/Mix Grill Plate.png";
-import smokyChickenGrill from "../assets/grill/Smoky Chicken Grill.png";
-import turkishAdanaKebab from "../assets/grill/Turkish Adana Kebab.png";
+import bbqBeefRibs from "../assets/grill/BBQ Beef Ribs.webp";
+import clickEatInfernoGrill from "../assets/grill/ClickEat Inferno Grill.webp";
+import fireSteakGrill from "../assets/grill/Fire Steak Grill.webp";
+import mixGrillPlate from "../assets/grill/Mix Grill Plate.webp";
+import smokyChickenGrill from "../assets/grill/Smoky Chicken Grill.webp";
+import turkishAdanaKebab from "../assets/grill/Turkish Adana Kebab.webp";
 
 export type MenuCategory =
   | "rolls"

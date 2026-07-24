@@ -8,11 +8,11 @@ import {
   type KeyboardEvent,
 } from "react";
 import { Link, useNavigate } from "react-router";
-import { Helmet } from "react-helmet";
 import { useAuth } from "../../stores/auth.store";
 import { api } from "../../lib/api";
 import { saveAuth } from "../../lib/auth";
-import AuthBg from "../../assets/auth-bg.png";
+import { getErrorMessage } from "../../lib/get-error-message";
+import AuthBg from "../../assets/auth-bg.webp";
 
 export const RegisterPage = () => {
   const navigate = useNavigate();
@@ -167,8 +167,8 @@ export const RegisterPage = () => {
       handleLogin(userWithRole, token);
 
       navigate("/");
-    } catch (err: any) {
-      setError(err?.response?.data?.message || "Ошибка регистрации");
+    } catch (error: unknown) {
+      setError(getErrorMessage(error, "Ошибка регистрации"));
     } finally {
       setLoading(false);
     }
@@ -181,9 +181,7 @@ export const RegisterPage = () => {
 
   return (
     <div className="auth-page">
-      <Helmet>
-        <title>Регистрация</title>
-      </Helmet>
+      <title>Регистрация</title>
 
       <div
         className="auth-viewport relative overflow-hidden bg-cover bg-center"

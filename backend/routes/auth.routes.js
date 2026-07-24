@@ -6,20 +6,6 @@ import { protect } from "../middleware/auth.middleware.js";
 
 const router = express.Router();
 
-function detectRole(email) {
-  const beforeAt = email.toLowerCase().trim().split("@")[0];
-
-  if (beforeAt.endsWith("admn")) {
-    return "admin";
-  }
-
-  if (beforeAt.endsWith("staf") || beforeAt.endsWith("staff")) {
-    return "employee";
-  }
-
-  return "client";
-}
-
 function createToken(user) {
   return jwt.sign(
     {
@@ -85,15 +71,13 @@ router.post("/register", async (req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const role = detectRole(normalizedEmail);
-
     const user = await User.create({
       name: normalizedName,
       email: normalizedEmail,
       phone: normalizedPhone,
       password: hashedPassword,
       avatar: "",
-      role,
+      role: "client",
     });
 
     const token = createToken(user);
@@ -108,7 +92,6 @@ router.post("/register", async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Ошибка регистрации",
-      error: error.message,
     });
   }
 });
@@ -165,7 +148,6 @@ router.post("/login", async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Ошибка входа",
-      error: error.message,
     });
   }
 });
@@ -213,7 +195,6 @@ router.patch("/me", protect, async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Ошибка обновления профиля",
-      error: error.message,
     });
   }
 });

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router";
 import {
   MapContainer,
@@ -19,6 +19,7 @@ import {
 import { cancelOrder, getOrderById } from "../../lib/orders.api";
 import { socket } from "../../lib/socket";
 import { useThemeStore } from "../../stores/theme.store";
+import { getErrorMessage } from "../../lib/get-error-message";
 
 type OrderStatus =
   | "pending"
@@ -149,7 +150,7 @@ export const OrderTrackingPage = () => {
   const [cancelLoading, setCancelLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const fetchOrder = async (silent = false) => {
+  const fetchOrder = useCallback(async (silent = false) => {
     if (!id) return;
 
     try {
@@ -158,12 +159,12 @@ export const OrderTrackingPage = () => {
 
       const data = await getOrderById(id);
       setOrder(data);
-    } catch (err: any) {
-      setError(err?.response?.data?.message || "Заказ не найден");
+    } catch (error: unknown) {
+      setError(getErrorMessage(error, "Заказ не найден"));
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
 
   const handleCancelOrder = async () => {
     if (!order) return;
@@ -172,8 +173,8 @@ export const OrderTrackingPage = () => {
       setCancelLoading(true);
       const updatedOrder = await cancelOrder(order.id);
       setOrder(updatedOrder);
-    } catch (err: any) {
-      alert(err?.response?.data?.message || "Не удалось отменить заказ");
+    } catch (error: unknown) {
+      alert(getErrorMessage(error, "Не удалось отменить заказ"));
     } finally {
       setCancelLoading(false);
     }
@@ -205,7 +206,7 @@ export const OrderTrackingPage = () => {
       socket.off("order:status-updated");
       socket.off("courier:location-updated");
     };
-  }, [id]);
+  }, [fetchOrder, id]);
 
   const mapData = useMemo(() => {
     if (!order) return null;

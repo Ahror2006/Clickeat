@@ -59,4 +59,4 @@ export const ListsItem = ({
   );
 };
 
-interface Props extends RestaurantType {}
+type Props = RestaurantType;

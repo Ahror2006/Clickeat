@@ -16,6 +16,7 @@ import { useAuth } from "../../stores/auth.store";
 import { useThemeStore } from "../../stores/theme.store";
 import { useToastStore } from "../../stores/toast.store";
 import { getToken, saveAuth } from "../../lib/auth";
+import { API_BASE_URL } from "../../configs/api";
 
 export function EditProfilePage() {
   const navigate = useNavigate();
@@ -93,7 +94,7 @@ export function EditProfilePage() {
         return;
       }
 
-      const response = await fetch("https://clickeat-5wy1.onrender.com/api/auth/me", {
+      const response = await fetch(`${API_BASE_URL}/auth/me`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",

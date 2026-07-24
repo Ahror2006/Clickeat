@@ -38,19 +38,13 @@ const defaultUser: User = {
   role: "client",
 };
 
-function getRoleByEmail(email: string): UserRole {
-  const normalizedEmail = email.trim().toLowerCase();
-  const beforeAt = normalizedEmail.split("@")[0];
-
-  if (beforeAt.endsWith("admn")) return "admin";
-  if (beforeAt.endsWith("staf")) return "employee";
-
-  return "client";
-}
-
 function normalizeUser(user: Partial<User>): User {
   const email = user.email ? user.email.trim().toLowerCase() : "";
-  const hiddenRole = getRoleByEmail(email);
+  const role: UserRole = ["client", "employee", "admin"].includes(
+    user.role || ""
+  )
+    ? (user.role as UserRole)
+    : "client";
 
   return {
     ...defaultUser,
@@ -60,7 +54,7 @@ function normalizeUser(user: Partial<User>): User {
     email,
     phone: user.phone || "",
     avatar: user.avatar || "",
-    role: hiddenRole,
+    role,
   };
 }
 

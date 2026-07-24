@@ -11,6 +11,8 @@ import {
   RiCloseLine,
 } from "react-icons/ri";
 import { useThemeStore } from "../../stores/theme.store";
+import { api } from "../../lib/api";
+import { getErrorMessage } from "../../lib/get-error-message";
 
 const topics = [
   "Проблема с заказом",
@@ -35,18 +37,6 @@ const faq = [
   },
 ];
 
-type SupportTicket = {
-  id: number;
-  name: string;
-  contact: string;
-  topic: string;
-  message: string;
-  fileName?: string;
-  filePreview?: string;
-  createdAt: string;
-  status: "new";
-};
-
 export const SupportPage = () => {
   const theme = useThemeStore((state) => state.theme);
   const isDark = theme === "dark";
@@ -67,6 +57,11 @@ export const SupportPage = () => {
   const handleFileChange = (file?: File) => {
     if (!file) return;
 
+    if (file.size > 2 * 1024 * 1024) {
+      setError("Размер файла не должен превышать 2 МБ.");
+      return;
+    }
+
     setFileName(file.name);
 
     const reader = new FileReader();
@@ -81,7 +76,7 @@ export const SupportPage = () => {
     setFilePreview("");
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     setError("");
     setSuccess("");
 
@@ -100,29 +95,26 @@ export const SupportPage = () => {
       return;
     }
 
-    const ticket: SupportTicket = {
-      id: Date.now(),
-      name: name.trim(),
-      contact: contact.trim(),
-      topic,
-      message: message.trim(),
-      fileName,
-      filePreview,
-      createdAt: new Date().toLocaleString("ru-RU"),
-      status: "new",
-    };
+    try {
+      await api.post("/feedback", {
+        kind: "support",
+        name: name.trim(),
+        contact: contact.trim(),
+        category: topic,
+        message: message.trim(),
+        fileName,
+        fileData: filePreview,
+      });
 
-    const saved = localStorage.getItem("supportTickets");
-    const tickets: SupportTicket[] = saved ? JSON.parse(saved) : [];
-
-    localStorage.setItem("supportTickets", JSON.stringify([ticket, ...tickets]));
-
-    setSuccess("Обращение отправлено! Мы скоро свяжемся с вами.");
-    setName("");
-    setContact("");
-    setMessage("");
-    setTopic(topics[0]);
-    clearFile();
+      setSuccess("Обращение отправлено! Мы скоро свяжемся с вами.");
+      setName("");
+      setContact("");
+      setMessage("");
+      setTopic(topics[0]);
+      clearFile();
+    } catch (submitError: unknown) {
+      setError(getErrorMessage(submitError, "Не удалось отправить обращение."));
+    }
   };
 
   return (

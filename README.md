@@ -1,69 +1,68 @@
-# React + TypeScript + Vite
+# ClickEat
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Веб-приложение доставки еды с клиентским интерфейсом, панелью сотрудника,
+админ-панелью и отслеживанием заказов в реальном времени.
 
-Currently, two official plugins are available:
+## Стек
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- React 19, TypeScript, Vite и Tailwind CSS
+- Node.js, Express и MongoDB/Mongoose
+- Socket.IO для статусов заказа и положения курьера
 
-## Expanding the ESLint configuration
+## Требования
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+- Node.js 20.19 или новее
+- MongoDB (локальная или MongoDB Atlas)
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## Локальный запуск
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+1. Скопируйте `.env.example` в `.env`.
+2. Скопируйте `backend/.env.example` в `backend/.env` и заполните значения.
+3. Установите и запустите backend:
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+   ```bash
+   cd backend
+   npm ci
+   npm run dev
+   ```
+
+4. В другом терминале запустите frontend:
+
+   ```bash
+   npm ci
+   npm run dev
+   ```
+
+Frontend откроется по адресу `http://localhost:5173`, backend — на порту 5000.
+
+## Переменные окружения
+
+Frontend:
+
+- `VITE_API_URL` — адрес backend без `/api`.
+
+Backend:
+
+- `MONGO_URI` — строка подключения MongoDB.
+- `JWT_SECRET` — длинный случайный секрет подписи токенов.
+- `CLIENT_URL` — разрешённый адрес frontend.
+- `PORT` — порт сервера, по умолчанию 5000.
+
+## Роли
+
+Публичная регистрация всегда создаёт пользователя с ролью `client`. Роли
+`employee` и `admin` назначаются администратором. Для первоначального создания
+администратора можно временно задать `RESET_USER_EMAIL`, `RESET_USER_PASSWORD`
+и `RESET_USER_ROLE=admin`, выполнить `npm run reset-user`, а затем удалить эти
+значения из окружения.
+
+## Проверки
+
+```bash
+npm run lint
+npm run build
+cd backend
+npm audit
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+Секреты и файлы `.env` не должны попадать в Git.

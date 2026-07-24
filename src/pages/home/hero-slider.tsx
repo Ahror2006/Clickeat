@@ -2,10 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import { FiChevronLeft, FiChevronRight } from "react-icons/fi";
 import { Container } from "../../widgets/container";
 
-import PizzaBanner from "../../assets/banners/pizza-banner.png";
-import SushiBanner from "../../assets/banners/sushi-banner.png";
-import FastFoodBanner from "../../assets/banners/fastfood-banner.png";
-import HomeFoodBanner from "../../assets/banners/homefood-banner.png";
+import PizzaBanner from "../../assets/banners/pizza-banner.webp";
+import SushiBanner from "../../assets/banners/sushi-banner.webp";
+import FastFoodBanner from "../../assets/banners/fastfood-banner.webp";
+import HomeFoodBanner from "../../assets/banners/homefood-banner.webp";
 
 const banners = [
   { id: 1, image: PizzaBanner, alt: "Pizza" },
