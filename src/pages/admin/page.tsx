@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   FiAlertCircle,
   FiBarChart2,
@@ -15,6 +15,7 @@ import {
   FiX,
 } from "react-icons/fi";
 import { getAuthUser, getToken } from "../../lib/auth";
+import { API_BASE_URL } from "../../configs/api";
 
 type UserRole = "client" | "employee" | "admin" | "user";
 type FilterType = "all" | "client" | "employee" | "admin" | "blocked";
@@ -85,11 +86,12 @@ export default function AdminPage() {
 
   const currentUserId = String(currentUser?.id || currentUser?._id || "");
 
-  const authHeaders = {
-    Authorization: `Bearer ${token}`,
-  };
+  const authHeaders = useMemo(
+    () => ({ Authorization: `Bearer ${token}` }),
+    [token]
+  );
 
-  const fetchAdminData = async () => {
+  const fetchAdminData = useCallback(async () => {
     try {
       setLoading(true);
       setError("");
@@ -100,10 +102,10 @@ export default function AdminPage() {
       }
 
       const [usersResponse, statsResponse] = await Promise.all([
-        fetch("https://clickeat-5wy1.onrender.com/api/admin/users", {
+        fetch(`${API_BASE_URL}/admin/users`, {
           headers: authHeaders,
         }),
-        fetch("https://clickeat-5wy1.onrender.com/api/admin/stats", {
+        fetch(`${API_BASE_URL}/admin/stats`, {
           headers: authHeaders,
         }),
       ]);
@@ -128,11 +130,11 @@ export default function AdminPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [authHeaders, token]);
 
   useEffect(() => {
     fetchAdminData();
-  }, []);
+  }, [fetchAdminData]);
 
   const localStats = useMemo(() => {
     return {
@@ -182,7 +184,7 @@ export default function AdminPage() {
       setActionLoading(true);
 
       const response = await fetch(
-        `https://clickeat-5wy1.onrender.com/api/admin/users/${id}/role`,
+        `${API_BASE_URL}/admin/users/${id}/role`,
         {
           method: "PUT",
           headers: {
@@ -224,7 +226,7 @@ export default function AdminPage() {
       setActionLoading(true);
 
       const response = await fetch(
-        `https://clickeat-5wy1.onrender.com/api/admin/users/${id}/block`,
+        `${API_BASE_URL}/admin/users/${id}/block`,
         {
           method: "PUT",
           headers: authHeaders,
@@ -270,7 +272,7 @@ export default function AdminPage() {
       setActionLoading(true);
 
       const response = await fetch(
-        `https://clickeat-5wy1.onrender.com/api/admin/users/${id}`,
+        `${API_BASE_URL}/admin/users/${id}`,
         {
           method: "DELETE",
           headers: authHeaders,

@@ -119,7 +119,6 @@ router.post("/", protect, async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Ошибка создания заказа",
-      error: error.message,
     });
   }
 });
@@ -139,7 +138,6 @@ router.get("/my", protect, async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Ошибка загрузки заказов",
-      error: error.message,
     });
   }
 });
@@ -189,7 +187,6 @@ router.patch("/:id/cancel", protect, async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Ошибка отмены заказа",
-      error: error.message,
     });
   }
 });
@@ -229,7 +226,6 @@ router.get("/:id", protect, async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Ошибка загрузки заказа",
-      error: error.message,
     });
   }
 });
@@ -249,7 +245,6 @@ router.get("/", protect, allowRoles("employee", "admin"), async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Ошибка загрузки всех заказов",
-      error: error.message,
     });
   }
 });
@@ -314,7 +309,6 @@ router.patch(
       return res.status(500).json({
         success: false,
         message: "Ошибка изменения статуса",
-        error: error.message,
       });
     }
   }
@@ -369,7 +363,6 @@ router.patch(
       return res.status(500).json({
         success: false,
         message: "Ошибка обновления локации курьера",
-        error: error.message,
       });
     }
   }

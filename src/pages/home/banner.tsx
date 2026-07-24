@@ -1,5 +1,5 @@
 import { Container } from "../../widgets/container";
-import BannerImage from "./../../assets/banners/pizza-banner.png";
+import BannerImage from "./../../assets/banners/pizza-banner.webp";
 
 export const Banner = () => {
   return (

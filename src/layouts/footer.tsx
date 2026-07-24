@@ -1,6 +1,6 @@
 import { Link } from "react-router";
 import { FaInstagram, FaFacebookF, FaTelegramPlane } from "react-icons/fa";
-import Logo from "../assets/logo.jpg";
+import Logo from "../assets/logo.webp";
 import { Container } from "../widgets/container";
 import { useThemeStore } from "../stores/theme.store";
 

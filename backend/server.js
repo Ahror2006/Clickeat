@@ -4,15 +4,29 @@ import dotenv from "dotenv";
 import mongoose from "mongoose";
 import http from "http";
 import { Server } from "socket.io";
+import helmet from "helmet";
+import { rateLimit } from "express-rate-limit";
 
 import authRoutes from "./routes/auth.routes.js";
 import adminRoutes from "./routes/admin.routes.js";
 import orderRoutes from "./routes/order.routes.js";
+import feedbackRoutes from "./routes/feedback.routes.js";
 import { initSocket } from "./socket.js";
 
 dotenv.config();
 
 const app = express();
+
+app.set("trust proxy", 1);
+app.use(helmet());
+app.use(
+  rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 300,
+    standardHeaders: "draft-8",
+    legacyHeaders: false,
+  })
+);
 
 const allowedOrigins = [
   "http://localhost:5173",
@@ -28,8 +42,8 @@ app.use(
   })
 );
 
-app.use(express.json({ limit: "10mb" }));
-app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+app.use(express.json({ limit: "3mb" }));
+app.use(express.urlencoded({ extended: true, limit: "3mb" }));
 
 app.get("/", (req, res) => {
   res.status(200).send("ClickEat backend is running");
@@ -42,9 +56,14 @@ app.get("/api/health", (req, res) => {
   });
 });
 
-app.use("/api/auth", authRoutes);
+app.use(
+  "/api/auth",
+  rateLimit({ windowMs: 15 * 60 * 1000, limit: 30 }),
+  authRoutes
+);
 app.use("/api/admin", adminRoutes);
 app.use("/api/orders", orderRoutes);
+app.use("/api/feedback", feedbackRoutes);
 
 app.use((req, res) => {
   res.status(404).json({

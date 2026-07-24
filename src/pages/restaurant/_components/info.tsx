@@ -1,6 +1,5 @@
 import { useParams, Link } from "react-router";
 import { restaurantData } from "../../../defaults/restaurant.data";
-import { Helmet } from "react-helmet";
 
 function formatSum(value: number) {
   return `${value.toLocaleString("ru-RU")} сум`;
@@ -22,9 +21,7 @@ export const Info = () => {
 
   return (
     <>
-      <Helmet>
-        <title>{restaurant.title} | ClickEat</title>
-      </Helmet>
+      <title>{restaurant.title} | ClickEat</title>
 
       <section className="restaurant-detail-hero">
         <img src={restaurant.image} alt={restaurant.title} />

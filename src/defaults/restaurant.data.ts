@@ -1,9 +1,9 @@
-import restaurant1 from "../assets/restaurants/restaurant-1.png";
-import restaurant2 from "../assets/restaurants/restaurant-2.png";
-import restaurant3 from "../assets/restaurants/restaurant-3.png";
-import restaurant4 from "../assets/restaurants/restaurant-4.png";
-import restaurant5 from "../assets/restaurants/restaurant-5.png";
-import restaurant6 from "../assets/restaurants/restaurant-6.png";
+import restaurant1 from "../assets/restaurants/restaurant-1.webp";
+import restaurant2 from "../assets/restaurants/restaurant-2.webp";
+import restaurant3 from "../assets/restaurants/restaurant-3.webp";
+import restaurant4 from "../assets/restaurants/restaurant-4.webp";
+import restaurant5 from "../assets/restaurants/restaurant-5.webp";
+import restaurant6 from "../assets/restaurants/restaurant-6.webp";
 
 export type RestaurantType = {
   id: number;

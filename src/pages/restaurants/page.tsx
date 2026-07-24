@@ -1,7 +1,7 @@
 import { Link } from "react-router";
 import { FaStar } from "react-icons/fa";
 import { restaurants } from "../../defaults/restaurant.data";
-import restaurantsBg from "../../assets/restaurants_bg.png";
+import restaurantsBg from "../../assets/restaurants_bg.webp";
 import { useThemeStore } from "../../stores/theme.store";
 import { Container } from "../../widgets/container";
 

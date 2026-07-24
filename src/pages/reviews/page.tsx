@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   RiStarFill,
   RiStarLine,
@@ -8,17 +8,19 @@ import {
   RiHeart3Line,
 } from "react-icons/ri";
 import { useThemeStore } from "../../stores/theme.store";
+import { api } from "../../lib/api";
+import { getErrorMessage } from "../../lib/get-error-message";
+
+const types = ["Отзыв", "Предложение", "Идея для улучшения"];
 
 type Review = {
-  id: number;
+  _id: string;
   name: string;
-  type: string;
+  category: string;
   rating: number;
   message: string;
   createdAt: string;
 };
-
-const types = ["Отзыв", "Предложение", "Идея для улучшения"];
 
 export const ReviewsPage = () => {
   const theme = useThemeStore((state) => state.theme);
@@ -30,12 +32,22 @@ export const ReviewsPage = () => {
   const [message, setMessage] = useState("");
   const [success, setSuccess] = useState("");
   const [error, setError] = useState("");
+  const [reviews, setReviews] = useState<Review[]>([]);
 
-  const savedReviews: Review[] = JSON.parse(
-    localStorage.getItem("clickEatReviews") || "[]"
-  );
+  const loadReviews = useCallback(async () => {
+    try {
+      const response = await api.get("/feedback/reviews");
+      setReviews(response.data.reviews || []);
+    } catch {
+      // The form remains usable if the public review list is unavailable.
+    }
+  }, []);
 
-  const handleSubmit = () => {
+  useEffect(() => {
+    void loadReviews();
+  }, [loadReviews]);
+
+  const handleSubmit = async () => {
     setError("");
     setSuccess("");
 
@@ -49,25 +61,24 @@ export const ReviewsPage = () => {
       return;
     }
 
-    const review: Review = {
-      id: Date.now(),
-      name: name.trim(),
-      type,
-      rating,
-      message: message.trim(),
-      createdAt: new Date().toLocaleString("ru-RU"),
-    };
+    try {
+      await api.post("/feedback", {
+        kind: "review",
+        name: name.trim(),
+        category: type,
+        rating,
+        message: message.trim(),
+      });
 
-    localStorage.setItem(
-      "clickEatReviews",
-      JSON.stringify([review, ...savedReviews])
-    );
-
-    setName("");
-    setType(types[0]);
-    setRating(5);
-    setMessage("");
-    setSuccess("Спасибо! Ваш отзыв сохранён.");
+      setName("");
+      setType(types[0]);
+      setRating(5);
+      setMessage("");
+      setSuccess("Спасибо! Ваш отзыв отправлен.");
+      void loadReviews();
+    } catch (submitError: unknown) {
+      setError(getErrorMessage(submitError, "Не удалось отправить отзыв."));
+    }
   };
 
   return (
@@ -175,14 +186,14 @@ export const ReviewsPage = () => {
           </div>
         </div>
 
-        {savedReviews.length > 0 && (
+        {reviews.length > 0 && (
           <div className="mt-12">
             <h2 className="text-[36px] font-black">Последние отзывы</h2>
 
             <div className="mt-6 grid gap-4 lg:grid-cols-3">
-              {savedReviews.slice(0, 6).map((item) => (
+              {reviews.slice(0, 6).map((item) => (
                 <div
-                  key={item.id}
+                  key={item._id}
                   className={`rounded-[26px] border p-6 ${
                     isDark
                       ? "border-[#2a1608] bg-black/35"
@@ -192,7 +203,7 @@ export const ReviewsPage = () => {
                   <div className="flex items-center justify-between gap-3">
                     <h3 className="font-black">{item.name}</h3>
                     <span className="rounded-full bg-[#ff6b00]/15 px-3 py-1 text-sm font-black text-[#ff6b00]">
-                      {item.type}
+                      {item.category}
                     </span>
                   </div>
 
@@ -206,7 +217,9 @@ export const ReviewsPage = () => {
                     {item.message}
                   </p>
 
-                  <p className="mt-4 text-sm text-[#ff6b00]">{item.createdAt}</p>
+                  <p className="mt-4 text-sm text-[#ff6b00]">
+                    {new Date(item.createdAt).toLocaleString("ru-RU")}
+                  </p>
                 </div>
               ))}
             </div>

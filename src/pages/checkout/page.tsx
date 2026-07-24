@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { Helmet } from "react-helmet";
 import { Link, useNavigate } from "react-router";
 import {
   FiCreditCard,
@@ -13,7 +12,12 @@ import {
   FiTruck,
   FiUser,
 } from "react-icons/fi";
-import { createOrder, getMyOrders } from "../../lib/orders.api";
+import {
+  createOrder,
+  getMyOrders,
+  type OrderSummary,
+} from "../../lib/orders.api";
+import { getErrorMessage } from "../../lib/get-error-message";
 
 import { Container } from "../../widgets/container";
 import { useAuth } from "../../stores/auth.store";
@@ -143,7 +147,7 @@ export const CheckoutPage = () => {
 
       const myOrders = await getMyOrders();
 
-      const hasActiveOrder = myOrders.some((order: any) =>
+      const hasActiveOrder = (myOrders as OrderSummary[]).some((order) =>
         ["pending", "accepted", "cooking", "delivering"].includes(
           order.status
         )
@@ -204,11 +208,8 @@ export const CheckoutPage = () => {
 
         navigate(`/order-tracking/${order.id}`);
       }, 1200);
-    } catch (err: any) {
-      setError(
-        err?.response?.data?.message ||
-        "Не удалось создать заказ. Проверь backend."
-      );
+    } catch (error: unknown) {
+      setError(getErrorMessage(error, "Не удалось создать заказ. Проверь backend."));
     } finally {
       setLoading(false);
     }
@@ -219,9 +220,7 @@ export const CheckoutPage = () => {
       className={`min-h-screen pb-24 pt-[120px] transition-all lg:pt-[150px] ${isDark ? "bg-black text-white" : "bg-[#f6f1ea] text-[#2f3542]"
         }`}
     >
-      <Helmet>
-        <title>Оформление заказа</title>
-      </Helmet>
+      <title>Оформление заказа</title>
 
       <Container>
         <div className="mb-7">

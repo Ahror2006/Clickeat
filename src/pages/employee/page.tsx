@@ -9,6 +9,7 @@ import {
   updateOrderStatus,
   type OrderStatus,
 } from "../../lib/orders.api";
+import { getErrorMessage } from "../../lib/get-error-message";
 
 type OrderItem = {
   name: string;
@@ -78,11 +79,8 @@ export const EmployeePage = () => {
       setError("");
       const data = await getAllOrders();
       setOrders(Array.isArray(data) ? data : []);
-    } catch (err: any) {
-      setError(
-        err?.response?.data?.message ||
-          "Не удалось загрузить заказы. Проверь роль employee/admin."
-      );
+    } catch (error: unknown) {
+      setError(getErrorMessage(error, "Не удалось загрузить заказы. Проверь роль employee/admin."));
     } finally {
       setLoading(false);
     }
@@ -107,8 +105,8 @@ export const EmployeePage = () => {
       setOrders((prev) =>
         prev.map((order) => (order.id === orderId ? updatedOrder : order))
       );
-    } catch (err: any) {
-      alert(err?.response?.data?.message || "Не удалось изменить статус");
+    } catch (error: unknown) {
+      alert(getErrorMessage(error, "Не удалось изменить статус"));
     } finally {
       setChangingId(null);
     }

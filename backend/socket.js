@@ -1,4 +1,6 @@
 import { Order } from "./models/Order.js";
+import { User } from "./models/User.js";
+import jwt from "jsonwebtoken";
 
 let ioInstance = null;
 const activeCourierSimulations = new Map();
@@ -6,34 +8,56 @@ const activeCourierSimulations = new Map();
 export function initSocket(io) {
   ioInstance = io;
 
-  io.on("connection", (socket) => {
-    console.log("Socket connected:", socket.id);
+  io.use(async (socket, next) => {
+    try {
+      const token = socket.handshake.auth?.token;
+      if (!token) return next(new Error("Authentication required"));
 
-    socket.on("join-order-room", (orderId) => {
-      socket.join(`order:${orderId}`);
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const user = await User.findById(decoded.userId);
+
+      if (!user || user.isBlocked) {
+        return next(new Error("Authentication failed"));
+      }
+
+      socket.user = user;
+      next();
+    } catch {
+      next(new Error("Authentication failed"));
+    }
+  });
+
+  io.on("connection", (socket) => {
+    if (["employee", "admin"].includes(socket.user.role)) {
+      socket.join("staff");
+    }
+
+    socket.on("join-order-room", async (orderId) => {
+      if (typeof orderId !== "string") return;
+
+      const order = await Order.findById(orderId).select("user");
+      const isStaff = ["employee", "admin"].includes(socket.user.role);
+      const isOwner = order && String(order.user) === String(socket.user._id);
+
+      if (isStaff || isOwner) socket.join(`order:${orderId}`);
     });
 
     socket.on("leave-order-room", (orderId) => {
       socket.leave(`order:${orderId}`);
     });
 
-    socket.on("disconnect", () => {
-      console.log("Socket disconnected:", socket.id);
-    });
   });
 }
 
 export function emitOrderCreated(order) {
   if (!ioInstance) return;
-  ioInstance.emit("order:created", order);
+  ioInstance.to("staff").emit("order:created", order);
 }
 
 export function emitOrderStatusUpdated(order) {
   if (!ioInstance) return;
 
   const orderId = order._id || order.id;
-
-  ioInstance.emit("order:status-updated", order);
 
   if (orderId) {
     ioInstance.to(`order:${orderId}`).emit("order:status-updated", order);
@@ -44,8 +68,6 @@ export function emitCourierLocationUpdated(order) {
   if (!ioInstance) return;
 
   const orderId = order._id || order.id;
-
-  ioInstance.emit("courier:location-updated", order);
 
   if (orderId) {
     ioInstance.to(`order:${orderId}`).emit("courier:location-updated", order);

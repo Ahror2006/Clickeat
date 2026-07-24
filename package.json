@@ -1,8 +1,11 @@
 {
-  "name": "lesson_4",
+  "name": "clickeat-frontend",
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "engines": {
+    "node": ">=20.19"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
@@ -15,7 +18,6 @@
     "leaflet": "^1.9.4",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
-    "react-helmet": "^6.1.0",
     "react-icons": "^5.5.0",
     "react-leaflet": "^5.0.0",
     "react-router": "^7.9.1",
@@ -29,7 +31,6 @@
     "@types/leaflet": "^1.9.21",
     "@types/react": "^19.1.13",
     "@types/react-dom": "^19.1.9",
-    "@types/react-helmet": "^6.1.11",
     "@vitejs/plugin-react-swc": "^4.1.0",
     "eslint": "^9.36.0",
     "eslint-plugin-react-hooks": "^5.2.0",

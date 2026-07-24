@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { RiSearchLine, RiShoppingCart2Line } from "react-icons/ri";
 import { GoPerson } from "react-icons/go";
-import Logo from "../assets/logo.jpg";
+import Logo from "../assets/logo.webp";
 import { Container } from "../widgets/container";
 import { useAuth } from "../stores/auth.store";
 import { useThemeStore } from "../stores/theme.store";
